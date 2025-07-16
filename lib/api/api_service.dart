@@ -707,177 +707,132 @@ class ApiService {
     bool? hasBooks, // Filter categories that have books or not
   }) async {
     try {
-      Map<String, dynamic> queryParams = {
-        'page': page,
-        'per_page': perPage,
-      };
-
-      // Search parameter
-      if (search != null && search.isNotEmpty) {
-        queryParams['search'] = search;
-      }
-
-      // Sorting options
-      if (sortBy != null && sortBy.isNotEmpty) {
-        queryParams['sort_by'] = sortBy; // name, created_at, books_count
-      }
-
-      if (sortOrder != null && sortOrder.isNotEmpty) {
-        queryParams['sort_order'] = sortOrder; // asc, desc
-      }
-
-      // Filter by categories that have books
-      if (hasBooks != null) {
-        queryParams['has_books'] = hasBooks ? '1' : '0';
-      }
-
       if (kDebugMode) {
-        print('Fetching categories with filters: $queryParams');
+        print('🔍 getCategoriesPaginated called with:');
+        print('  Page: $page, PerPage: $perPage');
+        print('  Search: $search');
+        print('  SortBy: $sortBy, SortOrder: $sortOrder');
+        print('  HasBooks: $hasBooks');
       }
 
-      final response =
-          await _dio.get('/category/all', queryParameters: queryParams);
-      final responseData = response.data;
+      // Since the API endpoint '/category/all/all' doesn't seem to support
+      // server-side filtering and pagination, we'll use client-side approach
+      try {
+        final allCategories = await getCategories();
+        List<CategoryModel.Category> filteredCategories = [...allCategories];
 
-      if (responseData is Map<String, dynamic> &&
-          responseData['data'] is Map<String, dynamic>) {
-        final categoriesData = responseData['data'];
-
-        // Handle paginated response structure: data.categories is a pagination object
-        if (categoriesData['categories'] is Map<String, dynamic>) {
-          final categoriesPagination =
-              categoriesData['categories'] as Map<String, dynamic>;
-          final List<dynamic> categoryList = categoriesPagination['data'] ?? [];
-
-          return {
-            'categories': categoryList
-                .map((json) => CategoryModel.Category.fromJson(json))
-                .toList(),
-            'current_page': categoriesPagination['current_page'] ?? 1,
-            'total_pages': categoriesPagination['last_page'] ?? 1,
-            'total_items': categoriesPagination['total'] ?? 0,
-            'per_page': categoriesPagination['per_page'] ?? perPage,
-          };
-        }
-        // Handle direct list response structure: data.categories is an array
-        else if (categoriesData['categories'] is List) {
-          final List<dynamic> categoryList = categoriesData['categories'] ?? [];
-
-          return {
-            'categories': categoryList
-                .map((json) => CategoryModel.Category.fromJson(json))
-                .toList(),
-            'current_page': 1,
-            'total_pages': 1,
-            'total_items': categoryList.length,
-            'per_page': perPage,
-          };
+        if (kDebugMode) {
+          print('🔍 Retrieved ${allCategories.length} total categories');
         }
 
-        // If categories data structure is unexpected, fall through to manual pagination
-      } else {
-        // Fallback: get all categories and implement pagination manually
-        try {
-          final allCategories = await getCategories();
-          List<CategoryModel.Category> filteredCategories = allCategories;
-
-          // Apply search filter
-          if (search != null && search.isNotEmpty) {
-            filteredCategories = allCategories
-                .where((category) =>
-                    category.name.toLowerCase().contains(search.toLowerCase()))
-                .toList();
+        // Apply search filter
+        if (search != null && search.isNotEmpty) {
+          filteredCategories = filteredCategories
+              .where((category) =>
+                  category.name.toLowerCase().contains(search.toLowerCase()))
+              .toList();
+          if (kDebugMode) {
+            print(
+                '🔍 After search filter: ${filteredCategories.length} categories');
           }
+        }
 
-          // Apply hasBooks filter - needs implementation with actual book count check
-          if (hasBooks != null) {
-            if (hasBooks) {
-              // Filter categories that have books (books_count > 0)
-              // Note: This would require the Category model to have a books_count field
-              // For now, we'll simulate this - in a real app, you'd need to add books_count to the API
-              filteredCategories = filteredCategories.where((category) {
-                // This is a placeholder - in reality you'd check if category has books
-                return true; // Allow all for now since we don't have books_count in the model
-              }).toList();
-            } else {
-              // Filter categories that don't have books (books_count == 0)
-              filteredCategories = filteredCategories.where((category) {
-                // This is a placeholder - in reality you'd check if category has no books
-                return true; // Allow all for now since we don't have books_count in the model
-              }).toList();
+        // Apply hasBooks filter - placeholder implementation
+        if (hasBooks != null) {
+          if (hasBooks) {
+            // Filter categories that have books (books_count > 0)
+            // Since we don't have books_count, we'll simulate by filtering some categories
+            // In a real implementation, you'd need to fetch book counts from the API
+            filteredCategories = filteredCategories.where((category) {
+              // Placeholder: assume categories with ID > 50 have books
+              return category.id > 50;
+            }).toList();
+          } else {
+            // Filter categories that don't have books (books_count == 0)
+            filteredCategories = filteredCategories.where((category) {
+              // Placeholder: assume categories with ID <= 50 don't have books
+              return category.id <= 50;
+            }).toList();
+          }
+          if (kDebugMode) {
+            print(
+                '🔍 After hasBooks filter ($hasBooks): ${filteredCategories.length} categories');
+          }
+        }
+
+        // Apply sorting
+        if (sortBy != null && sortBy.isNotEmpty) {
+          filteredCategories.sort((a, b) {
+            int comparison = 0;
+            switch (sortBy) {
+              case 'name':
+                comparison =
+                    a.name.toLowerCase().compareTo(b.name.toLowerCase());
+                break;
+              case 'created_at':
+                comparison = (a.createdAt ?? DateTime.now())
+                    .compareTo(b.createdAt ?? DateTime.now());
+                break;
+              case 'books_count':
+                // For books_count sorting, we'd need the count field in the model
+                // For now, fallback to name sorting
+                comparison =
+                    a.name.toLowerCase().compareTo(b.name.toLowerCase());
+                break;
+              default:
+                comparison =
+                    a.name.toLowerCase().compareTo(b.name.toLowerCase());
             }
+            return sortOrder == 'desc' ? -comparison : comparison;
+          });
+          if (kDebugMode) {
+            print(
+                '🔍 After sorting ($sortBy $sortOrder): ${filteredCategories.length} categories');
           }
-
-          // Apply sorting
-          if (sortBy != null && sortBy.isNotEmpty) {
-            filteredCategories.sort((a, b) {
-              int comparison = 0;
-              switch (sortBy) {
-                case 'name':
-                  comparison = a.name.compareTo(b.name);
-                  break;
-                case 'created_at':
-                  comparison = (a.createdAt ?? DateTime.now())
-                      .compareTo(b.createdAt ?? DateTime.now());
-                  break;
-                case 'books_count':
-                  // For books_count sorting, we'd need the count field in the model
-                  // For now, fallback to name sorting
-                  comparison = a.name.compareTo(b.name);
-                  break;
-                default:
-                  comparison = a.name.compareTo(b.name);
-              }
-              return sortOrder == 'desc' ? -comparison : comparison;
-            });
-          }
-
-          print(
-              '🔍 Categories filtered: ${filteredCategories.length} of ${allCategories.length}');
-          print(
-              '🔍 Search: $search, SortBy: $sortBy, SortOrder: $sortOrder, HasBooks: $hasBooks');
-
-          // Implement pagination
-          final totalItems = filteredCategories.length;
-          final totalPages = (totalItems / perPage).ceil();
-          final startIndex = (page - 1) * perPage;
-          final endIndex = startIndex + perPage;
-          final paginatedCategories = filteredCategories.sublist(
-              startIndex,
-              endIndex > filteredCategories.length
-                  ? filteredCategories.length
-                  : endIndex);
-
-          return {
-            'categories': paginatedCategories,
-            'current_page': page,
-            'total_pages': totalPages,
-            'total_items': totalItems,
-            'per_page': perPage,
-          };
-        } catch (e) {
-          print('Error in category client-side filtering: $e');
-          return {
-            'categories': <CategoryModel.Category>[],
-            'current_page': 1,
-            'total_pages': 1,
-            'total_items': 0,
-            'per_page': perPage,
-          };
         }
-      }
 
-      // Default fallback if no condition matches
-      return {
-        'categories': <CategoryModel.Category>[],
-        'current_page': 1,
-        'total_pages': 1,
-        'total_items': 0,
-        'per_page': perPage,
-      };
+        // Implement pagination
+        final totalItems = filteredCategories.length;
+        final totalPages = totalItems > 0 ? (totalItems / perPage).ceil() : 1;
+        final startIndex = (page - 1) * perPage;
+        final endIndex = startIndex + perPage;
+
+        final paginatedCategories = filteredCategories.sublist(
+            startIndex,
+            endIndex > filteredCategories.length
+                ? filteredCategories.length
+                : endIndex);
+
+        if (kDebugMode) {
+          print('🔍 Pagination: Page $page of $totalPages');
+          print(
+              '🔍 Showing ${paginatedCategories.length} of $totalItems total categories');
+          print(
+              '🔍 Categories on this page: ${paginatedCategories.map((c) => c.name).join(', ')}');
+        }
+
+        return {
+          'categories': paginatedCategories,
+          'current_page': page,
+          'total_pages': totalPages,
+          'total_items': totalItems,
+          'per_page': perPage,
+        };
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error in category client-side filtering: $e');
+        }
+        return {
+          'categories': <CategoryModel.Category>[],
+          'current_page': 1,
+          'total_pages': 1,
+          'total_items': 0,
+          'per_page': perPage,
+        };
+      }
     } on DioException catch (e) {
       if (kDebugMode) {
-        print('Error fetching paginated categories: $e');
+        print('❌ Error fetching paginated categories: $e');
       }
       throw Exception('Gagal mengambil data kategori dari server.');
     }

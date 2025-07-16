@@ -54,6 +54,12 @@ class _AdminCategoryManagementScreenState
     setState(() => _isLoading = true);
 
     try {
+      print('📱 Loading categories with filters:');
+      print('  Page: $_currentPage, PerPage: $_perPage');
+      print('  Search: ${_searchController.text}');
+      print('  SortBy: $_sortBy, SortOrder: $_sortOrder');
+      print('  HasBooks: $_hasBooks');
+
       final result = await _apiService.getCategoriesPaginated(
         page: _currentPage,
         perPage: _perPage,
@@ -72,8 +78,15 @@ class _AdminCategoryManagementScreenState
           _totalItems = result['total_items'] ?? 0;
           _perPage = result['per_page'] ?? 10;
         });
+
+        print('📱 Categories loaded successfully:');
+        print('  Total: $_totalItems categories');
+        print('  Showing page $_currentPage of $_totalPages');
+        print(
+            '  Categories on this page: ${_categories.map((c) => c.name).join(', ')}');
       }
     } catch (e) {
+      print('❌ Error loading categories: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memuat kategori: $e')),
