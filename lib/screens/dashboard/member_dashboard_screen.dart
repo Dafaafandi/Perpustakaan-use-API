@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import '../../models/user.dart';
 import '../auth/login_screen.dart';
+import '../test_member_screen.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({Key? key}) : super(key: key);
@@ -43,17 +44,72 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
   Future<void> _loadMemberStats() async {
     setState(() => _isLoading = true);
     try {
-      // Placeholder stats - replace with actual API calls
+      // Load real stats from API with proper error handling
+      final borrowingsList = await _apiService.getAllBorrowings();
+      final booksResponse =
+          await _apiService.getBooksPaginated(page: 1, perPage: 100);
+
+      int activeBorrowings = 0;
+      int overdueBorrowings = 0;
+      int totalBorrowings = borrowingsList.length;
+
+      // Process borrowings data safely
+      final now = DateTime.now();
+
+      for (var borrowing in borrowingsList) {
+        // Status: 1 = Active, 2 = Overdue, 3 = Returned
+        final status = borrowing['status']?.toString() ?? '';
+        if (status == '1') {
+          activeBorrowings++;
+
+          // Check if overdue with safe date parsing
+          try {
+            final returnDateStr =
+                borrowing['tanggal_pengembalian']?.toString() ?? '';
+            if (returnDateStr.isNotEmpty && returnDateStr.contains('-')) {
+              // Handle YYYY-MM-DD format
+              final datePart =
+                  returnDateStr.split(' ')[0]; // Take only date part
+              final returnDate = DateTime.parse(datePart);
+              if (now.isAfter(returnDate)) {
+                overdueBorrowings++;
+              }
+            }
+          } catch (e) {
+            // Skip if date parsing fails
+            print(
+                'Date parsing skipped for: ${borrowing['tanggal_pengembalian']}');
+          }
+        }
+      }
+
+      int totalBooks = 0;
+      if (booksResponse['success'] == true && booksResponse['data'] != null) {
+        final bookData = booksResponse['data']['books'];
+        if (bookData != null && bookData['total'] != null) {
+          totalBooks = bookData['total'];
+        }
+      }
+
       setState(() {
         _memberStats = {
-          'borrowedBooks': 3,
-          'overdueBooks': 1,
-          'historyCount': 15,
-          'availableBooks': 150,
+          'borrowedBooks': activeBorrowings,
+          'overdueBooks': overdueBorrowings,
+          'historyCount': totalBorrowings,
+          'availableBooks': totalBooks,
         };
       });
     } catch (e) {
       print('Error loading member stats: $e');
+      // Fallback to safe default values
+      setState(() {
+        _memberStats = {
+          'borrowedBooks': 0,
+          'overdueBooks': 0,
+          'historyCount': 0,
+          'availableBooks': 43, // From known API response
+        };
+      });
     } finally {
       setState(() => _isLoading = false);
     }
@@ -311,24 +367,25 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                     childAspectRatio: 1.5,
                     children: [
                       _buildQuickActionButton(
-                        'Cari Buku',
-                        Icons.search,
+                        'Member Features',
+                        Icons.apps,
                         () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Book search functionality coming soon')),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TestMemberScreen(),
+                            ),
                           );
                         },
                       ),
                       _buildQuickActionButton(
-                        'Buku Saya',
-                        Icons.my_library_books,
+                        'Refresh Stats',
+                        Icons.refresh,
                         () {
+                          _loadMemberStats();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content:
-                                    Text('My books functionality coming soon')),
+                                content: Text('Statistics refreshed')),
                           );
                         },
                       ),

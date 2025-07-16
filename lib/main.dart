@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BorrowingProvider()),
       ],
       child: MaterialApp(
-        title: 'Perpus App',
+        title: 'Mamorasoft Library',
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           scaffoldBackgroundColor: Colors.white,
