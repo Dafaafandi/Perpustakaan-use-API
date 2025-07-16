@@ -1,0 +1,646 @@
+{
+	"info": {
+		"_postman_id": "33755431-81a0-49e2-b81c-f298d8fc7e54",
+		"name": "Perpus API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "10401379",
+		"_collection_link": "https://team-mamorasoft.postman.co/workspace/Team-Workspace~14ec1c1e-b9fe-4334-8071-e431d3241121/collection/10401379-33755431-81a0-49e2-b81c-f298d8fc7e54?action=share&source=collection_link&creator=10401379"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "Admin123",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "12345678",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/login",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "name",
+									"value": "",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "Admin123",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "12345678",
+									"type": "text"
+								},
+								{
+									"key": "confirm_password",
+									"value": "",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/register",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"register"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "book",
+			"item": [
+				{
+					"name": "Get All Book",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer cl0a269Plm6vlUJJzhtntyGQ0HYDeGGf",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "http://perpus-api.mamorasoft.com/api/book/all?page=1&per_page=10",
+							"protocol": "http",
+							"host": [
+								"perpus-api",
+								"mamorasoft",
+								"com"
+							],
+							"path": [
+								"api",
+								"book",
+								"all"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								},
+								{
+									"key": "opsional search",
+									"value": " ",
+									"disabled": true
+								},
+								{
+									"key": "opsional filter",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Book By Id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/9",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"9"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Export to PDF",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/export/pdf",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"export",
+								"pdf"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Export to Excel",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/export/excel",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"export",
+								"excel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Book By ID",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "judul",
+									"value": "Yaasin dan Tahlil",
+									"type": "text"
+								},
+								{
+									"key": "category_id",
+									"value": "100",
+									"type": "text"
+								},
+								{
+									"key": "pengarang",
+									"value": "Achmad Musthofa",
+									"type": "text"
+								},
+								{
+									"key": "tahun",
+									"value": "2015",
+									"type": "text"
+								},
+								{
+									"key": "stok",
+									"value": "35",
+									"type": "text"
+								},
+								{
+									"key": "path",
+									"description": "opsional",
+									"type": "file",
+									"src": [],
+									"disabled": true
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/9/update",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"9",
+								"update"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Book By ID",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/9/delete",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"9",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload File Excel",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file_import",
+									"type": "file",
+									"src": "/C:/Users/HP/Downloads/template_export.xlsx"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/import/excel",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"import",
+								"excel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Download Template",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/book/download/template",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"book",
+								"download",
+								"template"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "category",
+			"item": [
+				{
+					"name": "Get Category By Id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/category/100",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"category",
+								"100"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Category By Id",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "nama_kategori",
+									"value": "Islam",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/category/update/100",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"category",
+								"update",
+								"100"
+							],
+							"query": [
+								{
+									"key": "nama_kategory",
+									"value": "islams",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Category",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/category/all/all",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"category",
+								"all",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Book By ID Copy",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/category/100/delete",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"category",
+								"100",
+								"delete"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Peminjaman",
+			"item": [
+				{
+					"name": "get peminjaman",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/peminjaman?page=1&per_page=10",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"peminjaman"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get peminjaman ALL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/peminjaman/all",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"peminjaman",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "detail peminjaman",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/peminjaman/show?id=10",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"peminjaman",
+								"show"
+							],
+							"query": [
+								{
+									"key": "id",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "pengembalian",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/peminjaman/return",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"peminjaman",
+								"return"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create peminjaman",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "tanggal_peminjaman",
+									"value": "",
+									"type": "text"
+								},
+								{
+									"key": "tanggal_pengembalian",
+									"value": "",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/peminjaman/book/{bookid}/member/{memberid}",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"peminjaman",
+								"book",
+								"{bookid}",
+								"member",
+								"{memberid}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "return peminjaman",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "tanggal_pengembalian",
+									"value": "",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL_PERPUS_API}}/peminjaman/book/{id}/return",
+							"host": [
+								"{{URL_PERPUS_API}}"
+							],
+							"path": [
+								"peminjaman",
+								"book",
+								"{id}",
+								"return"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "detail peminjaman",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseurl}}/peminjaman/detail/1",
+							"host": [
+								"{{baseurl}}"
+							],
+							"path": [
+								"peminjaman",
+								"detail",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiNzY2ZjIzNDUwZGUwYzAxMGFkNjE0MjcxYTEyODdjMDk1Y2UyZjJiMmFlNGI1MTE3MDgyNWIzMDM1MzgyYjFjMTQ5YWVjNGEzNDc5ZWY2MGUiLCJpYXQiOjE3MjY4MTk2NzIuNDUyNjk1LCJuYmYiOjE3MjY4MTk2NzIuNDUyNjk2LCJleHAiOjE3NTgzNTU2NzIuNDQ3NTg2LCJzdWIiOiIxIiwic2NvcGVzIjpbXX0.rbaWhe459ICkHZCIcY9z_shVWMvARu-wxTINCrqkcxf-nRoB18h1YVoNFP6I1GNEU3EFJSsQy7dyyMo8hz7BLV4pmVclpz2gt_245UgewHwTUvabLG63SDpyAwPF8GKS00FOGqb3rIAm9s2Bpltcm5klUgRQ8LocSpjZ1xO89G4SWku0gLwdbQrtO0OIl9qv-K-LUrZq7y-2Ev1BTSiqN_Wg3SBlYZ3QVTc9WwzqYZxQ-5M5MTBpdT-BwAwseCVJsGsdVjskz98rEEICZuT5vPOXW45Uoi5zgWyHWCEXo0vwHmOgrS3f6hw86WfNfSUVexf3Uh34OAeoQCjQXAzFbyFsF6-T-CoHzgazxYh-r4h_xdDuQYSJ4egKhO8QNFGpkv8dhKwdoyOItFZ1U9Q5PYpMBRaeCT7BWdf_IT9eFeVANbMpbaBYDvd5BVLf7TRYheZOOAHa_iCoZZRiVdslAvenYPbVLlLjjvjWJZR0grVUtzQMjLe-LT9orU3NLGnilSvsJT2QZVnizznKRWX6jS8xWHfnr2gNE0xKMJ8Hk2KJAYtbvL6zYY5EA3oov5SK2k3wWl1GDKQwkn46rjv2nD4lYLxsalRjduIQq860JMAQCPlRAPh5oe1Pn9WdlAnaOuGf8JAX7Asp2dDty6V3Ar9MM5kFYY-6r_dZN7cj7Wo",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "URL_PERPUS_API",
+			"value": "http://perpus-api.mamorasoft.com/api"
+		}
+	]
+}

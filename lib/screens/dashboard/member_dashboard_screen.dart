@@ -1,0 +1,399 @@
+import 'package:flutter/material.dart';
+import '../../api/api_service.dart';
+import '../../models/user.dart';
+import '../auth/login_screen.dart';
+
+class MemberDashboardScreen extends StatefulWidget {
+  const MemberDashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  _MemberDashboardScreenState createState() => _MemberDashboardScreenState();
+}
+
+class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
+  final ApiService _apiService = ApiService();
+  User? _currentUser;
+  bool _isLoading = true;
+  Map<String, dynamic> _memberStats = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _loadMemberStats();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      // For now, we'll create a placeholder user since getCurrentUser is not implemented
+      setState(() {
+        _currentUser = User(
+          id: 1,
+          name: 'Member User',
+          username: 'member',
+          email: 'member@example.com',
+          role: 'member',
+        );
+      });
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
+
+  Future<void> _loadMemberStats() async {
+    setState(() => _isLoading = true);
+    try {
+      // Placeholder stats - replace with actual API calls
+      setState(() {
+        _memberStats = {
+          'borrowedBooks': 3,
+          'overdueBooks': 1,
+          'historyCount': 15,
+          'availableBooks': 150,
+        };
+      });
+    } catch (e) {
+      print('Error loading member stats: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    try {
+      await _apiService.logout();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error during logout: $e')),
+      );
+    }
+  }
+
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 4,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [color.withOpacity(0.7), color],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: Colors.white, size: 32),
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(
+      String title, IconData icon, VoidCallback onTap) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: Colors.indigo),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Member Dashboard'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _loadUserData();
+              _loadMemberStats();
+            },
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              switch (value) {
+                case 'profile':
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Profile functionality coming soon')),
+                  );
+                  break;
+                case 'logout':
+                  _logout();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'profile',
+                child: ListTile(
+                  leading: Icon(Icons.person),
+                  title: Text('Profile'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text('Logout'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Section
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.indigo.shade400,
+                          Colors.indigo.shade600
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Selamat Datang!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _currentUser?.name ?? 'Member',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Role: ${_currentUser?.role ?? 'Member'}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Statistics
+                  const Text(
+                    'Statistik Saya',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.3,
+                    children: [
+                      _buildStatCard(
+                        'Buku Dipinjam',
+                        '${_memberStats['borrowedBooks'] ?? 0}',
+                        Icons.library_books,
+                        Colors.blue,
+                      ),
+                      _buildStatCard(
+                        'Buku Terlambat',
+                        '${_memberStats['overdueBooks'] ?? 0}',
+                        Icons.warning,
+                        Colors.red,
+                      ),
+                      _buildStatCard(
+                        'Riwayat Pinjam',
+                        '${_memberStats['historyCount'] ?? 0}',
+                        Icons.history,
+                        Colors.green,
+                      ),
+                      _buildStatCard(
+                        'Buku Tersedia',
+                        '${_memberStats['availableBooks'] ?? 0}',
+                        Icons.book,
+                        Colors.orange,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Quick Actions
+                  const Text(
+                    'Aksi Cepat',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 1.5,
+                    children: [
+                      _buildQuickActionButton(
+                        'Cari Buku',
+                        Icons.search,
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Book search functionality coming soon')),
+                          );
+                        },
+                      ),
+                      _buildQuickActionButton(
+                        'Buku Saya',
+                        Icons.my_library_books,
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('My books functionality coming soon')),
+                          );
+                        },
+                      ),
+                      _buildQuickActionButton(
+                        'Riwayat',
+                        Icons.history,
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content:
+                                    Text('History functionality coming soon')),
+                          );
+                        },
+                      ),
+                      _buildQuickActionButton(
+                        'Favorit',
+                        Icons.favorite,
+                        () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Favorites functionality coming soon')),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Recent Activity
+                  Card(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Aktivitas Terbaru',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.timeline,
+                                    size: 48, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Belum ada aktivitas',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
