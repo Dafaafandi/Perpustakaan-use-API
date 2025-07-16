@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'simple_book_search_screen.dart';
+import 'member/borrowed_books_screen.dart';
 
 class TestMemberScreen extends StatelessWidget {
   const TestMemberScreen({Key? key}) : super(key: key);
@@ -35,12 +37,10 @@ class TestMemberScreen extends StatelessWidget {
                     Colors.blue,
                     'Browse dan cari buku dengan infinite scroll',
                     () {
-                      // Untuk sementara menggunakan SnackBar
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Navigasi ke halaman Cari Buku - dalam pengembangan'),
-                          duration: Duration(seconds: 2),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SimpleBookSearchScreen(),
                         ),
                       );
                     },
@@ -52,12 +52,10 @@ class TestMemberScreen extends StatelessWidget {
                     Colors.green,
                     'Lihat dan kembalikan buku yang dipinjam',
                     () {
-                      // Untuk sementara menggunakan SnackBar
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Navigasi ke halaman Buku Dipinjam - dalam pengembangan'),
-                          duration: Duration(seconds: 2),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BorrowedBooksScreen(),
                         ),
                       );
                     },
