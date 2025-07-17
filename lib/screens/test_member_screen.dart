@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'simple_book_search_screen.dart';
 import 'member/borrowed_books_screen.dart';
+import 'member/member_dashboard_screen.dart';
+import 'member/books_list_screen_working.dart';
 
 class TestMemberScreen extends StatelessWidget {
   const TestMemberScreen({Key? key}) : super(key: key);
@@ -32,6 +33,21 @@ class TestMemberScreen extends StatelessWidget {
                 children: [
                   _buildFeatureCard(
                     context,
+                    'Dashboard',
+                    Icons.dashboard,
+                    Colors.indigo,
+                    'Lihat statistik dan dashboard member',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MemberDashboardScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
                     'Cari Buku',
                     Icons.search,
                     Colors.blue,
@@ -40,7 +56,7 @@ class TestMemberScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SimpleBookSearchScreen(),
+                          builder: (context) => MemberBooksListScreen(),
                         ),
                       );
                     },
@@ -55,7 +71,7 @@ class TestMemberScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const BorrowedBooksScreen(),
+                          builder: (context) => BorrowedBooksScreen(),
                         ),
                       );
                     },

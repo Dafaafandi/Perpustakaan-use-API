@@ -15,17 +15,18 @@ class _BorrowBookScreenState extends State<BorrowBookScreen> {
   final ApiService _apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController _memberIdController = TextEditingController();
   final TextEditingController _borrowDateController = TextEditingController();
   final TextEditingController _returnDateController = TextEditingController();
 
   bool _isLoading = false;
   DateTime? _selectedBorrowDate;
   DateTime? _selectedReturnDate;
+  int? _currentMemberId;
 
   @override
   void initState() {
     super.initState();
+    _loadCurrentMember();
     // Set default dates
     _selectedBorrowDate = DateTime.now();
     _selectedReturnDate =
@@ -33,14 +34,32 @@ class _BorrowBookScreenState extends State<BorrowBookScreen> {
 
     _borrowDateController.text = _formatDate(_selectedBorrowDate!);
     _returnDateController.text = _formatDate(_selectedReturnDate!);
+  }
 
-    // Set default member ID (placeholder - in real app, get from logged in user)
-    _memberIdController.text = '1'; // Default member ID
+  Future<void> _loadCurrentMember() async {
+    try {
+      // Get current user profile to get member ID
+      final profile = await _apiService.getUserProfile();
+      if (profile != null && profile['id'] != null) {
+        setState(() {
+          _currentMemberId = profile['id'];
+        });
+      } else {
+        // Fallback: use a default member ID for demo
+        setState(() {
+          _currentMemberId = 1;
+        });
+      }
+    } catch (e) {
+      // Fallback: use a default member ID for demo
+      setState(() {
+        _currentMemberId = 1;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _memberIdController.dispose();
     _borrowDateController.dispose();
     _returnDateController.dispose();
     super.dispose();
@@ -83,16 +102,25 @@ class _BorrowBookScreenState extends State<BorrowBookScreen> {
       return;
     }
 
+    if (_currentMemberId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Member ID tidak ditemukan'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final int memberId = int.parse(_memberIdController.text);
       final String borrowDate = _formatDate(_selectedBorrowDate!);
       final String returnDate = _formatDate(_selectedReturnDate!);
 
       final success = await _apiService.borrowBook(
         widget.book.id,
-        memberId,
+        _currentMemberId!,
         borrowDate,
         returnDate,
       );
@@ -239,25 +267,42 @@ class _BorrowBookScreenState extends State<BorrowBookScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Member ID Field
-                      TextFormField(
-                        controller: _memberIdController,
-                        decoration: const InputDecoration(
-                          labelText: 'ID Member',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
-                          helperText: 'Masukkan ID Member yang akan meminjam',
+                      // Member Info Display
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
                         ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'ID Member tidak boleh kosong';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'ID Member harus berupa angka';
-                          }
-                          return null;
-                        },
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person, color: Colors.blue),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Peminjam',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                FutureBuilder<String?>(
+                                  future: _apiService.getUserName(),
+                                  builder: (context, snapshot) {
+                                    return Text(
+                                      snapshot.data ??
+                                          'Member ID: ${_currentMemberId ?? "Loading..."}',
+                                      style: const TextStyle(fontSize: 16),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 
 class BorrowedBooksScreen extends StatefulWidget {
-  const BorrowedBooksScreen({Key? key}) : super(key: key);
+  BorrowedBooksScreen({Key? key}) : super(key: key);
 
   @override
   _BorrowedBooksScreenState createState() => _BorrowedBooksScreenState();
@@ -14,19 +14,82 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
   List<dynamic> _borrowings = [];
   bool _isLoading = false;
   String _filterStatus = 'semua'; // semua, dipinjam, dikembalikan, terlambat
+  int? _currentMemberId;
 
   @override
   void initState() {
     super.initState();
-    _loadBorrowings();
+    _loadCurrentMember();
+  }
+
+  Future<void> _loadCurrentMember() async {
+    try {
+      // Get current user ID from stored login data
+      final userId = await _apiService.getUserId();
+      if (userId != null) {
+        setState(() {
+          _currentMemberId = userId;
+        });
+        _loadBorrowings();
+      } else {
+        // Try to get from user profile
+        final profile = await _apiService.getUserProfile();
+        if (profile != null && profile['id'] != null) {
+          setState(() {
+            _currentMemberId = profile['id'];
+          });
+          _loadBorrowings();
+        } else {
+          // Show error - user not logged in
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Anda harus login terlebih dahulu'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat data user: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadBorrowings() async {
+    if (_currentMemberId == null) return;
+
     setState(() => _isLoading = true);
 
     try {
-      final borrowings = await _apiService.getAllBorrowings();
-      setState(() => _borrowings = borrowings);
+      final allBorrowings = await _apiService.getAllBorrowings();
+
+      // Filter borrowings for current member only
+      final memberBorrowings = allBorrowings.where((borrowing) {
+        // Check if borrowing belongs to current member
+        final member = borrowing['member'];
+        if (member != null && member['id'] != null) {
+          return member['id'] == _currentMemberId;
+        }
+        // Check id_member field directly
+        if (borrowing['id_member'] != null) {
+          return borrowing['id_member'] == _currentMemberId;
+        }
+        // Fallback: check member_id field
+        if (borrowing['member_id'] != null) {
+          return borrowing['member_id'] == _currentMemberId;
+        }
+        return false;
+      }).toList();
+
+      setState(() => _borrowings = memberBorrowings);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

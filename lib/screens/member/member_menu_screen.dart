@@ -28,7 +28,7 @@ class MemberMenuScreen extends StatelessWidget {
               () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const MemberBooksListScreen(),
+                  builder: (context) => MemberBooksListScreen(),
                 ),
               ),
             ),

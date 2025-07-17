@@ -101,6 +101,16 @@ class ApiService {
     await prefs.setString('user_email', email);
   }
 
+  Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('user_id');
+  }
+
+  Future<void> _saveUserId(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('user_id', id);
+  }
+
   Future<void> logout() async {
     try {
       // Try to call logout endpoint if available
@@ -146,6 +156,9 @@ class ApiService {
           // Save user info if available
           if (data['user'] != null) {
             await _saveUserName(data['user']['name'] ?? 'User');
+            if (data['user']['id'] != null) {
+              await _saveUserId(data['user']['id']);
+            }
             if (data['user']['role'] != null) {
               await _saveUserRole(data['user']['role']);
             }
