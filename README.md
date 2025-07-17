@@ -4,13 +4,16 @@ A new Flutter project.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+Aplikasi ini adalab aplikasi Perpustakaan berbasis flutter yang menggunakan API dari Kantor MAMORASOFT,codingan ini saya buat untuk study kasus hari 1,2,3 dan 4 di tempat magang saya. 
 
-A few resources to get you started if this is your first Flutter project:
+cara menggunakan aplikasi ini: 
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1.flutter pub get 
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2.flutter run 
+
+3.Untuk login member bisa menggunakan abidafaaa/Dafa12345 dan Admin bisa menggunakan Admin123/12345678 
+
+4.Ada beberapa fitur di dalamnya yang berfungsi sesuai standart untuk Aplikasi perpustakaan seperti member dan admin 
+
+5.TerimahKasih
