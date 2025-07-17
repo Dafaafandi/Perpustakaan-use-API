@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: 200,
                           child: Center(
                             child: Image.asset(
-                              'assets/images/Library.png',
+                              'assets/images/Mamorasoft.png',
                               width: 200,
                               height: 200,
                             ),

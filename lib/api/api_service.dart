@@ -1828,8 +1828,10 @@ class ApiService {
 
       if (response.statusCode == 200) {
         if (response.data is Map<String, dynamic> &&
-            response.data['download_url'] != null) {
-          return response.data['download_url'];
+            response.data['path'] != null) {
+          // Return the full URL for download
+          String filePath = response.data['path'];
+          return 'http://perpus-api.mamorasoft.com/$filePath';
         }
         return 'template_downloaded_successfully';
       }
@@ -1842,35 +1844,260 @@ class ApiService {
     }
   }
 
-  // Import books from Excel file
-  Future<bool> importBooksFromExcel(String filePath) async {
+  // Import books from Excel file (for web) - Enhanced with multiple attempts
+  Future<Map<String, dynamic>> importBooksFromExcel(
+      List<int> fileBytes, String fileName) async {
     try {
-      final fileName = filePath.split('/').last;
-      final formData = FormData.fromMap({
-        'file_import':
-            await MultipartFile.fromFile(filePath, filename: fileName),
-      });
+      // Ensure user is authenticated
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Token tidak valid. Silakan login kembali.',
+          'data': null
+        };
+      }
 
-      final response = await _dio.post(
-        '/book/import/excel',
-        data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
-      );
+      if (kDebugMode) {
+        print('Preparing import request:');
+        print('- File name: $fileName');
+        print('- File size: ${fileBytes.length} bytes');
+        print(
+            '- Content type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        print('- Token: ${token.substring(0, 50)}...');
+      }
 
-      return response.statusCode == 200 || response.statusCode == 201;
+      // Try multiple field name variations
+      List<Map<String, dynamic>> attempts = [
+        // Attempt 1: Original format with additional fields
+        {
+          'file_import': MultipartFile.fromBytes(
+            fileBytes,
+            filename: fileName,
+            contentType: DioMediaType('application',
+                'vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+          ),
+          'type': 'excel',
+          'import_type': 'books',
+        },
+        // Attempt 2: Just the file without extra fields
+        {
+          'file_import': MultipartFile.fromBytes(
+            fileBytes,
+            filename: fileName,
+            contentType: DioMediaType('application',
+                'vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+          ),
+        },
+        // Attempt 3: Different field name
+        {
+          'file': MultipartFile.fromBytes(
+            fileBytes,
+            filename: fileName,
+            contentType: DioMediaType('application',
+                'vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+          ),
+        },
+        // Attempt 4: Excel specific field name
+        {
+          'excel_file': MultipartFile.fromBytes(
+            fileBytes,
+            filename: fileName,
+            contentType: DioMediaType('application',
+                'vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+          ),
+        },
+      ];
+
+      for (int attemptIndex = 0;
+          attemptIndex < attempts.length;
+          attemptIndex++) {
+        if (kDebugMode) {
+          print('Import attempt ${attemptIndex + 1}/${attempts.length}');
+        }
+
+        try {
+          final formData = FormData.fromMap(attempts[attemptIndex]);
+
+          final response = await _dio.post(
+            '/book/import/excel',
+            data: formData,
+            options: Options(
+              contentType: 'multipart/form-data',
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Accept': 'application/json',
+              },
+            ),
+          );
+
+          if (kDebugMode) {
+            print('Import response status: ${response.statusCode}');
+            print('Import response data: ${response.data}');
+          }
+
+          // Check if response contains status field indicating success/failure
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            // Check internal status in response data
+            if (response.data is Map<String, dynamic>) {
+              final responseData = response.data as Map<String, dynamic>;
+
+              // If there's an internal status field, check it
+              if (responseData.containsKey('status')) {
+                final internalStatus = responseData['status'];
+
+                if (internalStatus == 200 || internalStatus == 201) {
+                  return {
+                    'success': true,
+                    'message': _extractMessage(responseData['message']) ??
+                        'Import berhasil',
+                    'data': responseData
+                  };
+                } else if (attemptIndex < attempts.length - 1) {
+                  // Try next attempt if not the last one
+                  if (kDebugMode) {
+                    print(
+                        'Attempt ${attemptIndex + 1} failed with internal status $internalStatus, trying next approach...');
+                  }
+                  continue;
+                } else {
+                  // This was the last attempt
+                  String errorMessage =
+                      _extractMessage(responseData['message']) ??
+                          'Import gagal';
+
+                  if (kDebugMode) {
+                    print(
+                        'All attempts failed. Server returned internal error: $internalStatus');
+                    print('Error message: $errorMessage');
+                    print('Full response: $responseData');
+                  }
+
+                  return {
+                    'success': false,
+                    'message': errorMessage,
+                    'data': responseData
+                  };
+                }
+              } else {
+                // No internal status, assume success if HTTP status is OK
+                return {
+                  'success': true,
+                  'message': _extractMessage(responseData['message']) ??
+                      'Import berhasil',
+                  'data': responseData
+                };
+              }
+            }
+
+            return {
+              'success': true,
+              'message': 'Import berhasil',
+              'data': response.data
+            };
+          } else {
+            if (attemptIndex < attempts.length - 1) {
+              continue; // Try next attempt
+            }
+            return {'success': false, 'message': 'Import gagal', 'data': null};
+          }
+        } catch (e) {
+          if (attemptIndex < attempts.length - 1) {
+            if (kDebugMode) {
+              print(
+                  'Attempt ${attemptIndex + 1} threw exception: $e, trying next approach...');
+            }
+            continue; // Try next attempt
+          } else {
+            rethrow; // Last attempt, let the outer catch handle it
+          }
+        }
+      }
+
+      // This should never be reached, but just in case
+      return {
+        'success': false,
+        'message': 'Semua percobaan import gagal',
+        'data': null
+      };
     } on DioException catch (e) {
       if (kDebugMode) {
-        print('Error importing books from Excel: ${e.response?.data}');
+        print('Error importing books from Excel: ${e.response?.statusCode}');
+        print('Error response: ${e.response?.data}');
       }
-      return false;
+
+      // Handle different error cases
+      if (e.response?.statusCode == 401) {
+        return {
+          'success': false,
+          'message': 'Sesi telah berakhir. Silakan login kembali.',
+          'data': null
+        };
+      } else if (e.response?.statusCode == 403) {
+        return {
+          'success': false,
+          'message': 'Tidak memiliki akses untuk import data.',
+          'data': null
+        };
+      } else if (e.response?.statusCode == 422) {
+        return {
+          'success': false,
+          'message': 'Format file tidak valid atau data tidak sesuai template.',
+          'data': e.response?.data
+        };
+      } else if (e.response?.statusCode == 500) {
+        String errorMessage = 'Terjadi kesalahan di server saat import';
+
+        // Try to extract specific error message
+        if (e.response?.data != null) {
+          if (e.response!.data is Map<String, dynamic>) {
+            final data = e.response!.data as Map<String, dynamic>;
+            if (data['message'] != null) {
+              if (data['message'] is Map) {
+                errorMessage = data['message']['message'] ?? errorMessage;
+              } else {
+                errorMessage = data['message'].toString();
+              }
+            }
+          }
+        }
+
+        return {
+          'success': false,
+          'message': errorMessage,
+          'data': e.response?.data
+        };
+      }
+
+      return {
+        'success': false,
+        'message':
+            e.response?.data?['message'] ?? 'Terjadi kesalahan saat import',
+        'data': e.response?.data
+      };
     } catch (e) {
       if (kDebugMode) {
         print('Unexpected error importing books: $e');
       }
-      return false;
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan tidak terduga',
+        'data': null
+      };
     }
+  }
+
+  // Helper method to extract message from response
+  String? _extractMessage(dynamic messageData) {
+    if (messageData == null) return null;
+
+    if (messageData is String) {
+      return messageData;
+    } else if (messageData is Map<String, dynamic>) {
+      return messageData['message']?.toString();
+    }
+
+    return messageData.toString();
   }
 
   // Check if user is authenticated

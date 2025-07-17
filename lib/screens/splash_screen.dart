@@ -44,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/images/Library.png',
+              'assets/images/Mamorasoft.png',
               width: 300,
               height: 300,
               color: Colors.white,
