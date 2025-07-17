@@ -84,10 +84,31 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
       final allBorrowings = await _apiService.getAllBorrowings();
 
       if (kDebugMode) {
-        print('All borrowings count: ${allBorrowings.length}');
+        print('=== BORROWINGS DATA ANALYSIS ===');
+        print('Total borrowings from API: ${allBorrowings.length}');
         print('Current member ID: $_currentMemberId');
         print(
             'Sample borrowing structure: ${allBorrowings.isNotEmpty ? allBorrowings.first : 'No data'}');
+
+        // Count borrowings by status for analysis
+        final statusCounts = <String, int>{};
+        final memberCounts = <int, int>{};
+
+        for (var borrowing in allBorrowings) {
+          final status = borrowing['status']?.toString() ?? 'unknown';
+          statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+
+          final memberId = borrowing['id_member'] ?? borrowing['member']?['id'];
+          if (memberId != null) {
+            memberCounts[memberId] = (memberCounts[memberId] ?? 0) + 1;
+          }
+        }
+
+        print('Borrowings by status: $statusCounts');
+        print(
+            'Current member ($_currentMemberId) has ${memberCounts[_currentMemberId] ?? 0} borrowings');
+        print('Total unique members: ${memberCounts.length}');
+        print('================================');
       }
 
       // Filter borrowings for current member only
@@ -185,66 +206,81 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
   }
 
   String _getStatusText(dynamic borrowing) {
-    // Check API status field first
+    // PRIORITAS: Gunakan status API sebagai sumber kebenaran utama
     final status = borrowing['status'];
-    final tanggalKembali = _getActualReturnDate(borrowing);
-    final tanggalJatuhTempo = _getExpectedReturnDate(borrowing);
 
-    // Status mapping baru:
-    // "1" = Dipinjam (Borrowed)
-    // "2" = Dikembalikan (Returned)
-    // "3" = Terlambat (Overdue)
+    if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+      print('=== STATUS DEBUG ${borrowing['id']} ===');
+      print('API Status: $status');
+      print('Status type: ${status.runtimeType}');
+    }
+
+    // Status mapping berdasarkan API:
+    // "1" atau 1 = Dipinjam (Borrowed)
+    // "2" atau 2 = Dikembalikan (Returned)
+    // "3" atau 3 = Terlambat (Overdue)
 
     if (status == "2" || status == 2) {
+      if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+        print('Result: Dikembalikan (API status 2)');
+        print('===================================');
+      }
       return 'Dikembalikan';
     }
 
     if (status == "3" || status == 3) {
+      if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+        print('Result: Terlambat (API status 3)');
+        print('=================================');
+      }
       return 'Terlambat';
     }
 
-    // If there's an actual return date, book is returned
-    if (tanggalKembali != null) {
-      return 'Dikembalikan';
-    }
-
-    // For status "1" (currently borrowed), check if overdue
+    // Status "1" = Dipinjam, tapi cek apakah sudah terlambat
     if (status == "1" || status == 1) {
       try {
+        final tanggalJatuhTempo = _getExpectedReturnDate(borrowing);
         if (tanggalJatuhTempo != null) {
           final jatuhTempo = DateTime.parse(tanggalJatuhTempo);
           final now = DateTime.now();
 
           if (now.isAfter(jatuhTempo)) {
+            if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+              print('Result: Terlambat (API status 1, past due date)');
+              print('Due: $tanggalJatuhTempo, Now: ${now.toIso8601String()}');
+              print('===================================================');
+            }
             return 'Terlambat';
           } else {
+            if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+              print('Result: Dipinjam (API status 1, not overdue)');
+              print('Due: $tanggalJatuhTempo, Now: ${now.toIso8601String()}');
+              print('==============================================');
+            }
             return 'Dipinjam';
           }
         } else {
+          if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+            print('Result: Dipinjam (API status 1, no due date)');
+            print('==========================================');
+          }
           return 'Dipinjam';
         }
       } catch (e) {
-        return 'Dipinjam';
-      }
-    }
-
-    // Fallback: check due date if no clear status
-    try {
-      if (tanggalJatuhTempo != null) {
-        final jatuhTempo = DateTime.parse(tanggalJatuhTempo);
-        final now = DateTime.now();
-
-        if (now.isAfter(jatuhTempo)) {
-          return 'Terlambat';
-        } else {
-          return 'Dipinjam';
+        if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+          print('Result: Dipinjam (API status 1, date parse error: $e)');
+          print('==================================================');
         }
-      } else {
         return 'Dipinjam';
       }
-    } catch (e) {
-      return 'Dipinjam';
     }
+
+    // Fallback untuk status yang tidak dikenal
+    if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+      print('Result: Dipinjam (unknown status: $status)');
+      print('========================================');
+    }
+    return 'Dipinjam';
   }
 
   Color _getStatusColor(dynamic borrowing) {
@@ -262,21 +298,13 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
 
   String? _getExpectedReturnDate(dynamic borrowing) {
     // Debug: print available fields (hanya untuk beberapa record pertama)
-    if (kDebugMode && _borrowings.indexOf(borrowing) < 2) {
-      print('=== DEBUG BORROWING ${borrowing['id']} ===');
-      print('Available fields: ${borrowing.keys.toList()}');
+    if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+      print('=== DUE DATE DEBUG ${borrowing['id']} ===');
       print('tanggal_pengembalian: ${borrowing['tanggal_pengembalian']}');
       print('expected_return_date: ${borrowing['expected_return_date']}');
       print('due_date: ${borrowing['due_date']}');
-      print('tanggal_jatuh_tempo: ${borrowing['tanggal_jatuh_tempo']}');
       print('original_due_date: ${borrowing['original_due_date']}');
-      print('actual_return_date: ${borrowing['actual_return_date']}');
-      print('tanggal_kembali: ${borrowing['tanggal_kembali']}');
-      print(
-          'tanggal_pengembalian_aktual: ${borrowing['tanggal_pengembalian_aktual']}');
-      print('returned_at: ${borrowing['returned_at']}');
-      print('status: ${borrowing['status']}');
-      print('==============================');
+      print('=====================================');
     }
 
     // Prioritas field untuk tanggal jatuh tempo:
@@ -293,7 +321,22 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
   }
 
   String? _getActualReturnDate(dynamic borrowing) {
-    // Try multiple possible fields for actual return date (expanded list)
+    // PENTING: Hanya kembalikan tanggal return yang aktual, jangan fallback ke field lain!
+    // Only return actual return date if the book has truly been returned
+
+    final status = borrowing['status'];
+
+    // If status is not "2" (returned), don't try to find return date
+    if (status != "2" && status != 2) {
+      if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+        print('=== RETURN DATE DEBUG ${borrowing['id']} ===');
+        print('Status: $status (not returned - no return date)');
+        print('==========================================');
+      }
+      return null; // No return date for non-returned books
+    }
+
+    // Only for status "2" (returned), look for actual return date
     final actualReturnDate = borrowing['actual_return_date'] ??
         borrowing['tanggal_kembali'] ??
         borrowing['returned_at'] ??
@@ -304,65 +347,26 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
         borrowing['tanggal_return'] ??
         borrowing['actual_date'] ??
         borrowing['returned_date'] ??
-        borrowing['return_datetime'] ??
-        borrowing['updated_at']; // As last resort, use when it was last updated
+        borrowing['return_datetime'];
 
-    // Special case: If status is "2" (returned) and no explicit return date field is found,
-    // use tanggal_pengembalian as it might have been updated with actual return date
-    if (actualReturnDate == null &&
-        (borrowing['status'] == "2" || borrowing['status'] == 2)) {
+    // If status is "2" but no explicit return date field found,
+    // use tanggal_pengembalian as it might contain the actual return date
+    if (actualReturnDate == null) {
       final fallbackDate = borrowing['tanggal_pengembalian'];
-      if (kDebugMode && _borrowings.indexOf(borrowing) < 2) {
-        print(
-            'Using tanggal_pengembalian as fallback for returned book: $fallbackDate');
+      if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+        print('=== RETURN DATE DEBUG ${borrowing['id']} ===');
+        print('Status: $status (returned)');
+        print('Using tanggal_pengembalian as return date: $fallbackDate');
+        print('==========================================');
       }
       return fallbackDate;
     }
 
-    // Debug: Log ALL date-related fields
-    if (kDebugMode && _borrowings.indexOf(borrowing) < 2) {
-      print('=== ACTUAL RETURN DATE DEBUG ${borrowing['id']} ===');
-      print('All date-related fields in borrowing:');
-      borrowing.forEach((key, value) {
-        if (key.toString().toLowerCase().contains('date') ||
-            key.toString().toLowerCase().contains('tanggal') ||
-            key.toString().toLowerCase().contains('return') ||
-            key.toString().toLowerCase().contains('kembali') ||
-            key.toString().toLowerCase().contains('at')) {
-          print('  $key: $value');
-        }
-      });
-
-      if (actualReturnDate != null) {
-        print('Selected return date: $actualReturnDate');
-        if (borrowing['actual_return_date'] != null)
-          print('From: actual_return_date');
-        else if (borrowing['tanggal_kembali'] != null)
-          print('From: tanggal_kembali');
-        else if (borrowing['returned_at'] != null)
-          print('From: returned_at');
-        else if (borrowing['tanggal_pengembalian_aktual'] != null)
-          print('From: tanggal_pengembalian_aktual');
-        else if (borrowing['tanggal_dikembalikan'] != null)
-          print('From: tanggal_dikembalikan');
-        else if (borrowing['return_date'] != null)
-          print('From: return_date');
-        else if (borrowing['date_returned'] != null)
-          print('From: date_returned');
-        else if (borrowing['tanggal_return'] != null)
-          print('From: tanggal_return');
-        else if (borrowing['actual_date'] != null)
-          print('From: actual_date');
-        else if (borrowing['returned_date'] != null)
-          print('From: returned_date');
-        else if (borrowing['return_datetime'] != null)
-          print('From: return_datetime');
-        else if (borrowing['updated_at'] != null)
-          print('From: updated_at (fallback)');
-      } else {
-        print('No return date found in any field!');
-      }
-      print('============================================');
+    if (kDebugMode && _borrowings.indexOf(borrowing) < 3) {
+      print('=== RETURN DATE DEBUG ${borrowing['id']} ===');
+      print('Status: $status (returned)');
+      print('Found actual return date: $actualReturnDate');
+      print('==========================================');
     }
 
     return actualReturnDate;

@@ -1687,17 +1687,27 @@ class ApiService {
         'overdue_books': 0,
       };
 
-      // Get total books from books API
+      // Get total books from books API and calculate total stock
       try {
         final books = await getBooks();
         calculatedStats['total_books'] = books.length;
+
+        // Calculate total stock from all books
+        int totalStock = 0;
+        for (var book in books) {
+          totalStock += book.stok;
+        }
+        calculatedStats['total_stock'] = totalStock;
+
         if (kDebugMode) {
-          print('Total books from API: ${books.length}');
+          print('Total unique books from API: ${books.length}');
+          print('Total stock (all copies): $totalStock');
         }
       } catch (e) {
         if (kDebugMode) {
           print('Failed to get books count: $e');
         }
+        calculatedStats['total_stock'] = calculatedStats['total_books'];
       }
 
       // Get total members using the enhanced getMembers method
@@ -1734,16 +1744,45 @@ class ApiService {
         int overdueBorrowings = 0;
         final DateTime now = DateTime.now();
 
+        if (kDebugMode) {
+          print('Processing ${borrowings.length} borrowings for stats...');
+        }
+
         for (var borrowing in borrowings) {
-          // Count active borrowings (status != "3" means not returned)
-          if (borrowing.status != "3" &&
-              borrowing.status.toLowerCase() != "returned") {
+          if (kDebugMode && borrowings.indexOf(borrowing) < 3) {
+            print(
+                'Borrowing ${borrowing.id}: status="${borrowing.status}", actualReturnDate=${borrowing.actualReturnDate}');
+          }
+
+          // Count active borrowings - use model's converted status
+          // Model converts: "1" -> "borrowed", "2" -> "returned", "3" -> "overdue"
+          bool isActiveBorrowing = false;
+
+          if (borrowing.status == "borrowed" || borrowing.status == "overdue") {
+            isActiveBorrowing = true;
+          }
+
+          if (kDebugMode && borrowings.indexOf(borrowing) < 5) {
+            print(
+                'Borrowing ${borrowing.id}: status="${borrowing.status}", isActive=$isActiveBorrowing');
+          }
+
+          if (isActiveBorrowing) {
             activeBorrowings++;
 
             // Check for overdue books using expectedReturnDate
-            if (now.isAfter(borrowing.expectedReturnDate) &&
-                borrowing.actualReturnDate == null) {
-              overdueBorrowings++;
+            if (borrowing.actualReturnDate == null) {
+              try {
+                if (now.isAfter(borrowing.expectedReturnDate)) {
+                  overdueBorrowings++;
+                }
+              } catch (e) {
+                // Skip if date parsing fails
+                if (kDebugMode) {
+                  print(
+                      'Failed to parse date for borrowing ${borrowing.id}: $e');
+                }
+              }
             }
           }
         }
@@ -1752,18 +1791,36 @@ class ApiService {
         calculatedStats['overdue_books'] = overdueBorrowings;
 
         if (kDebugMode) {
-          print('Active borrowings: $activeBorrowings');
+          print('Active borrowings (status "1"): $activeBorrowings');
           print('Overdue borrowings: $overdueBorrowings');
         }
       } catch (e) {
         if (kDebugMode) {
           print('Failed to get borrowing stats: $e');
         }
+        // Set safe defaults
+        calculatedStats['books_borrowed'] = 0;
+        calculatedStats['overdue_books'] = 0;
       }
 
-      // Calculate available books
-      calculatedStats['books_available'] =
-          calculatedStats['total_books'] - calculatedStats['books_borrowed'];
+      // Calculate available books (ensure it's never negative)
+      int totalStock =
+          calculatedStats['total_stock'] ?? calculatedStats['total_books'] ?? 0;
+      int borrowedBooks = calculatedStats['books_borrowed'] ?? 0;
+      int availableBooks = totalStock - borrowedBooks;
+
+      // Ensure available books is never negative
+      if (availableBooks < 0) {
+        if (kDebugMode) {
+          print(
+              'Warning: Available books calculation resulted in negative value ($availableBooks)');
+          print('Total stock: $totalStock, Borrowed books: $borrowedBooks');
+          print('Setting available books to 0');
+        }
+        availableBooks = 0;
+      }
+
+      calculatedStats['books_available'] = availableBooks;
 
       if (kDebugMode) {
         print('Final calculated stats: $calculatedStats');
@@ -1791,14 +1848,20 @@ class ApiService {
 
   // Mock dashboard stats for development
   Map<String, dynamic> _getMockDashboardStats() {
-    // Use more realistic numbers based on the actual data available
+    // Use realistic numbers that make sense
+    const int totalBooks = 45;
+    const int booksBorrowed = 62; // Based on actual stats from console log
+    final int booksAvailable = totalBooks > booksBorrowed
+        ? totalBooks - booksBorrowed
+        : 0; // Ensure non-negative
+
     return {
-      'total_books': 42,
-      'total_members': 6, // More realistic based on actual member count
-      'books_borrowed': 0, // Start with 0 since no active borrowings
-      'books_available': 42, // All books available
-      'total_categories': 8,
-      'overdue_books': 0, // No overdue books initially
+      'total_books': totalBooks,
+      'total_members': 90, // Based on screenshot
+      'books_borrowed': booksBorrowed,
+      'books_available': booksAvailable,
+      'total_categories': 33, // Realistic number
+      'overdue_books': 0,
     };
   }
 
@@ -2551,36 +2614,57 @@ class ApiService {
   // Simple method to get all borrowings (for demo purposes)
   Future<List<Borrowing>> getBorrowings() async {
     try {
-      final response = await _dio.get('/peminjaman?per_page=100');
+      // Use the same endpoint as LibraryApiService for consistency
+      final response = await _dio.get('/peminjaman/all');
       final responseData = response.data;
 
       if (kDebugMode) {
         print('getBorrowings response status: ${response.statusCode}');
       }
 
-      // Handle the correct API response structure
+      // Handle the /all endpoint response structure
       if (responseData is Map<String, dynamic> &&
           responseData['status'] == 200 &&
           responseData['data'] is Map<String, dynamic> &&
-          responseData['data']['peminjaman'] is Map<String, dynamic>) {
-        final borrowingsData = responseData['data']['peminjaman'];
-        final List<dynamic> borrowingList = borrowingsData['data'] ?? [];
+          responseData['data']['peminjaman'] is List) {
+        final List<dynamic> borrowingList = responseData['data']['peminjaman'];
 
         if (kDebugMode) {
-          print('Found ${borrowingList.length} borrowings in getBorrowings');
+          print(
+              'Found ${borrowingList.length} borrowings in getBorrowings from /all endpoint');
         }
 
         return borrowingList.map((json) => Borrowing.fromJson(json)).toList();
-      } else if (responseData is Map<String, dynamic> &&
-          responseData['data'] is List) {
-        // Fallback for direct data array
-        final List<dynamic> borrowingList = responseData['data'];
+      }
+
+      // Fallback to paginated endpoint if /all fails
+      final fallbackResponse = await _dio.get('/peminjaman?per_page=1000');
+      final fallbackData = fallbackResponse.data;
+
+      // Handle the paginated API response structure
+      if (fallbackData is Map<String, dynamic> &&
+          fallbackData['status'] == 200 &&
+          fallbackData['data'] is Map<String, dynamic> &&
+          fallbackData['data']['peminjaman'] is Map<String, dynamic>) {
+        final borrowingsData = fallbackData['data']['peminjaman'];
+        final List<dynamic> borrowingList = borrowingsData['data'] ?? [];
+
+        if (kDebugMode) {
+          print(
+              'Found ${borrowingList.length} borrowings in getBorrowings from paginated endpoint');
+        }
+
         return borrowingList.map((json) => Borrowing.fromJson(json)).toList();
-      } else if (responseData is Map<String, dynamic> &&
-          responseData['data'] is Map<String, dynamic> &&
-          responseData['data']['data'] is List) {
+      } else if (fallbackData is Map<String, dynamic> &&
+          fallbackData['data'] is List) {
+        // Fallback for direct data array
+        final List<dynamic> borrowingList = fallbackData['data'];
+        return borrowingList.map((json) => Borrowing.fromJson(json)).toList();
+      } else if (fallbackData is Map<String, dynamic> &&
+          fallbackData['data'] is Map<String, dynamic> &&
+          fallbackData['data']['data'] is List) {
         // Another fallback structure
-        final List<dynamic> borrowingList = responseData['data']['data'];
+        final List<dynamic> borrowingList = fallbackData['data']['data'];
         return borrowingList.map((json) => Borrowing.fromJson(json)).toList();
       }
 

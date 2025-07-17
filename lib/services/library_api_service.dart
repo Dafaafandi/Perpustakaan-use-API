@@ -406,42 +406,121 @@ class LibraryApiService {
 
   // Peminjaman (Borrowing) methods
   Future<List<dynamic>> getAllBorrowings(
-      {int page = 1, int perPage = 15}) async {
+      {int page = 1, int perPage = 1000}) async {
     try {
-      final response = await _dio.get('/peminjaman?page=$page');
-      final responseData = response.data;
-
-      if (kDebugMode) {
-        print('getAllBorrowings response: ${response.statusCode}');
-      }
-
-      if (responseData is Map<String, dynamic> &&
-          responseData['status'] == 200 &&
-          responseData['data'] is Map<String, dynamic> &&
-          responseData['data']['peminjaman'] is Map<String, dynamic>) {
-        final borrowingsData = responseData['data']['peminjaman'];
-        final List<dynamic> borrowingList = borrowingsData['data'] ?? [];
-
+      // Try using the same endpoint as admin first for consistency
+      try {
         if (kDebugMode) {
-          print('Found ${borrowingList.length} borrowings on page $page');
+          print('Trying /peminjaman/all endpoint (same as admin)...');
         }
 
-        return borrowingList;
-      } else if (responseData is Map<String, dynamic> &&
-          responseData['data'] is List) {
-        // Fallback for direct data array
-        return responseData['data'];
-      } else if (responseData is Map<String, dynamic> &&
-          responseData['data'] is Map<String, dynamic> &&
-          responseData['data']['data'] is List) {
-        // Another fallback structure
-        return responseData['data']['data'];
+        final response = await _dio.get('/peminjaman/all');
+        final responseData = response.data;
+
+        if (kDebugMode) {
+          print('getAllBorrowings (/all) response: ${response.statusCode}');
+        }
+
+        if (responseData is Map<String, dynamic> &&
+            responseData['status'] == 200 &&
+            responseData['data'] is Map<String, dynamic>) {
+          // Handle different response structures from /all endpoint
+          List<dynamic> allBorrowings = [];
+
+          if (responseData['data']['peminjaman'] is List) {
+            allBorrowings = responseData['data']['peminjaman'];
+          } else if (responseData['data'] is List) {
+            allBorrowings = responseData['data'];
+          }
+
+          if (kDebugMode) {
+            print(
+                'Successfully fetched ${allBorrowings.length} borrowings from /all endpoint');
+          }
+
+          return allBorrowings;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Failed to use /all endpoint, falling back to paginated: $e');
+        }
+      }
+
+      // Fallback to paginated endpoint if /all fails
+      if (kDebugMode) {
+        print('Using paginated endpoint /peminjaman...');
+      }
+
+      List<dynamic> allBorrowings = [];
+      int currentPage = 1;
+      bool hasMorePages = true;
+
+      while (hasMorePages) {
+        final response =
+            await _dio.get('/peminjaman?page=$currentPage&per_page=$perPage');
+        final responseData = response.data;
+
+        if (kDebugMode) {
+          print(
+              'getAllBorrowings response page $currentPage: ${response.statusCode}');
+        }
+
+        if (responseData is Map<String, dynamic> &&
+            responseData['status'] == 200 &&
+            responseData['data'] is Map<String, dynamic> &&
+            responseData['data']['peminjaman'] is Map<String, dynamic>) {
+          final borrowingsData = responseData['data']['peminjaman'];
+          final List<dynamic> borrowingList = borrowingsData['data'] ?? [];
+          final int currentPageNum = borrowingsData['current_page'] ?? 1;
+          final int lastPage = borrowingsData['last_page'] ?? 1;
+          final int total = borrowingsData['total'] ?? 0;
+
+          if (kDebugMode) {
+            print(
+                'Found ${borrowingList.length} borrowings on page $currentPage');
+            print(
+                'Current page: $currentPageNum, Last page: $lastPage, Total: $total');
+          }
+
+          allBorrowings.addAll(borrowingList);
+
+          // Check if there are more pages
+          hasMorePages = currentPageNum < lastPage;
+          currentPage++;
+
+          // Safety check to prevent infinite loops
+          if (currentPage > 100) {
+            if (kDebugMode) {
+              print(
+                  'Warning: Stopped pagination at page 100 to prevent infinite loop');
+            }
+            break;
+          }
+        } else if (responseData is Map<String, dynamic> &&
+            responseData['data'] is List) {
+          // Fallback for direct data array (usually means no pagination)
+          allBorrowings.addAll(responseData['data']);
+          hasMorePages = false;
+        } else if (responseData is Map<String, dynamic> &&
+            responseData['data'] is Map<String, dynamic> &&
+            responseData['data']['data'] is List) {
+          // Another fallback structure (usually means no pagination)
+          allBorrowings.addAll(responseData['data']['data']);
+          hasMorePages = false;
+        } else {
+          if (kDebugMode) {
+            print(
+                'Unexpected borrowing response structure in getAllBorrowings on page $currentPage');
+          }
+          hasMorePages = false;
+        }
       }
 
       if (kDebugMode) {
-        print('Unexpected borrowing response structure in getAllBorrowings');
+        print('Total borrowings fetched: ${allBorrowings.length}');
       }
-      return [];
+
+      return allBorrowings;
     } on DioException catch (e) {
       if (kDebugMode) {
         print('Error fetching borrowings: ${e.response?.statusCode}');
