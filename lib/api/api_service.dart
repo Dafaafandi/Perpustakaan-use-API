@@ -1778,13 +1778,14 @@ class ApiService {
     try {
       final response = await _dio.get('/book/export/pdf');
 
-      // The API might return a download URL or direct file data
+      // The API returns path similar to Excel export
       if (response.statusCode == 200) {
         if (response.data is Map<String, dynamic> &&
-            response.data['download_url'] != null) {
-          return response.data['download_url'];
+            response.data['path'] != null) {
+          // Return the full URL for download
+          String filePath = response.data['path'];
+          return 'http://perpus-api.mamorasoft.com/$filePath';
         }
-        // If it's direct file data, we might need to handle it differently
         return 'pdf_exported_successfully';
       }
       return null;
@@ -1801,13 +1802,14 @@ class ApiService {
     try {
       final response = await _dio.get('/book/export/excel');
 
-      // The API might return a download URL or direct file data
+      // The API returns path in the format: {"status":200,"message":"Berhasil Export File Buku Excel","path":"storage/export/buku_export.xlsx"}
       if (response.statusCode == 200) {
         if (response.data is Map<String, dynamic> &&
-            response.data['download_url'] != null) {
-          return response.data['download_url'];
+            response.data['path'] != null) {
+          // Return the full URL for download
+          String filePath = response.data['path'];
+          return 'http://perpus-api.mamorasoft.com/$filePath';
         }
-        // If it's direct file data, we might need to handle it differently
         return 'excel_exported_successfully';
       }
       return null;

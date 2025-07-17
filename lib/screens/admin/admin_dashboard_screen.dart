@@ -5,6 +5,7 @@ import 'package:perpus_app/screens/admin/admin_book_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_category_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_member_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_borrowing_management_screen.dart';
+import 'dart:html' as html;
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -293,7 +294,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           action: SnackBarAction(
             label: 'Download',
             onPressed: () {
-              // Implement download logic here
+              _downloadFile(downloadUrl, 'buku_export.xlsx');
             },
           ),
         ),
@@ -301,6 +302,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gagal membuat file Excel')),
+      );
+    }
+  }
+
+  // Helper method to download file in web browser
+  void _downloadFile(String url, String fileName) {
+    // Create an anchor element for download
+    final html.AnchorElement anchor = html.AnchorElement(href: url)
+      ..download = fileName
+      ..style.display = 'none';
+
+    // Add to DOM, click, and remove
+    html.document.body!.children.add(anchor);
+    anchor.click();
+    html.document.body!.children.remove(anchor);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('File $fileName mulai didownload...'),
+          backgroundColor: Colors.green,
+        ),
       );
     }
   }
@@ -320,18 +343,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     );
 
-    // Export functionality will be implemented later
-    await Future.delayed(Duration(seconds: 1));
+    final downloadUrl = await _apiService.exportBooksToPdf();
     Navigator.of(context).pop(); // Close loading dialog
 
-    if (mounted) {
+    if (downloadUrl != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Export functionality akan ditambahkan nanti'),
+          content: const Text('File PDF berhasil dibuat!'),
           action: SnackBarAction(
             label: 'Download',
             onPressed: () {
-              // Implement download logic here
+              _downloadFile(downloadUrl, 'buku_export.pdf');
             },
           ),
         ),
