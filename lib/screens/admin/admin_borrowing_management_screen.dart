@@ -61,23 +61,40 @@ class _AdminBorrowingManagementScreenState
   void _applyFilterAndPagination() {
     List<Borrowing> filteredBorrowings = _allBorrowings;
 
+    // Debug log untuk melihat semua status
+    print('DEBUG: Total borrowings: ${_allBorrowings.length}');
+    Map<String, int> statusCount = {};
+    for (var b in _allBorrowings) {
+      statusCount[b.status] = (statusCount[b.status] ?? 0) + 1;
+    }
+    print('DEBUG: Status distribution: $statusCount');
+
     // Apply filter
     switch (_currentFilter) {
       case 'active':
-        filteredBorrowings =
-            _allBorrowings.where((b) => b.status == 'borrowed').toList();
+        // PERBAIKAN: Filter aktif untuk yang BELUM dikembalikan
+        filteredBorrowings = _allBorrowings.where((b) => _isActive(b)).toList();
+        print(
+            'DEBUG: Active filter - found ${filteredBorrowings.length} borrowings (all not returned)');
         break;
       case 'overdue':
-        // Dengan mapping status baru, API langsung memberikan status "overdue"
+        // PERBAIKAN: Filter terlambat konsisten dengan display logic
         filteredBorrowings =
-            _allBorrowings.where((b) => b.status == 'overdue').toList();
+            _allBorrowings.where((b) => _isActuallyOverdue(b)).toList();
+        print(
+            'DEBUG: Overdue filter - found ${filteredBorrowings.length} borrowings (isOverdue OR status=overdue)');
         break;
       case 'returned':
+        // Filter kembali: semua yang sudah dikembalikan (termasuk yang dulu terlambat)
         filteredBorrowings =
             _allBorrowings.where((b) => b.status == 'returned').toList();
+        print(
+            'DEBUG: Returned filter - found ${filteredBorrowings.length} borrowings (all returned books)');
         break;
       default: // 'all'
         filteredBorrowings = _allBorrowings;
+        print(
+            'DEBUG: All filter - found ${filteredBorrowings.length} borrowings');
     }
 
     _totalPages = (filteredBorrowings.length / _itemsPerPage).ceil();
@@ -217,16 +234,49 @@ class _AdminBorrowingManagementScreenState
   }
 
   String _getStatusDisplayText(Borrowing borrowing) {
-    switch (borrowing.status) {
-      case 'borrowed':
-        return 'Dipinjam';
-      case 'returned':
-        return 'Dikembalikan';
-      case 'overdue':
-        return 'Terlambat';
-      default:
-        return borrowing.status.toUpperCase();
+    // PERBAIKAN: Sinkronkan status display dengan logika terlambat
+    if (borrowing.status == 'returned') {
+      return 'Dikembalikan';
+    } else if (borrowing.isOverdue || borrowing.status == 'overdue') {
+      return 'Terlambat';
+    } else if (borrowing.status == 'borrowed') {
+      return 'Dipinjam';
+    } else {
+      return borrowing.status.toUpperCase();
     }
+  }
+
+  Color _getBorrowingColor(Borrowing borrowing) {
+    // PERBAIKAN: Konsisten antara warna dan status
+    if (borrowing.status == 'returned') {
+      return Colors.green; // Sudah dikembalikan
+    } else if (borrowing.isOverdue || borrowing.status == 'overdue') {
+      return Colors.red; // Terlambat (berdasarkan tanggal atau status API)
+    } else {
+      return Colors.blue; // Dipinjam normal
+    }
+  }
+
+  IconData _getBorrowingIcon(Borrowing borrowing) {
+    // PERBAIKAN: Konsisten antara icon dan status
+    if (borrowing.status == 'returned') {
+      return Icons.check; // Sudah dikembalikan
+    } else if (borrowing.isOverdue || borrowing.status == 'overdue') {
+      return Icons.warning; // Terlambat
+    } else {
+      return Icons.book; // Dipinjam normal
+    }
+  }
+
+  // Helper method untuk mengecek apakah borrowing benar-benar terlambat
+  bool _isActuallyOverdue(Borrowing borrowing) {
+    return borrowing.status != 'returned' &&
+        (borrowing.isOverdue || borrowing.status == 'overdue');
+  }
+
+  // Helper method untuk mengecek apakah borrowing masih aktif
+  bool _isActive(Borrowing borrowing) {
+    return borrowing.status != 'returned';
   }
 
   @override
@@ -353,17 +403,10 @@ class _AdminBorrowingManagementScreenState
                                       horizontal: 16, vertical: 8),
                                   child: ListTile(
                                     leading: CircleAvatar(
-                                      backgroundColor: borrowing.isOverdue
-                                          ? Colors.red
-                                          : borrowing.status == 'returned'
-                                              ? Colors.green
-                                              : Colors.blue,
+                                      backgroundColor:
+                                          _getBorrowingColor(borrowing),
                                       child: Icon(
-                                        borrowing.status == 'returned'
-                                            ? Icons.check
-                                            : borrowing.isOverdue
-                                                ? Icons.warning
-                                                : Icons.book,
+                                        _getBorrowingIcon(borrowing),
                                         color: Colors.white,
                                       ),
                                     ),
@@ -385,11 +428,8 @@ class _AdminBorrowingManagementScreenState
                                         Text(
                                           'Status: ${_getStatusDisplayText(borrowing)}',
                                           style: TextStyle(
-                                            color: borrowing.isOverdue
-                                                ? Colors.red
-                                                : borrowing.status == 'returned'
-                                                    ? Colors.green
-                                                    : Colors.blue,
+                                            color:
+                                                _getBorrowingColor(borrowing),
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
