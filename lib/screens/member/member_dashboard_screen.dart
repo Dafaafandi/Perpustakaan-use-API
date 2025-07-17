@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/library_api_service.dart';
 import 'books_list_screen_working.dart';
 import 'borrowed_books_screen.dart';
 
@@ -11,7 +11,7 @@ class MemberDashboardScreen extends StatefulWidget {
 }
 
 class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
-  final ApiService _apiService = ApiService();
+  final LibraryApiService _apiService = LibraryApiService();
 
   Map<String, dynamic> _stats = {};
   bool _isLoading = true;
@@ -30,12 +30,32 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     try {
       // Get current user info
       final userName = await _apiService.getUserName();
-      final profile = await _apiService.getUserProfile();
+      int? userId = await _apiService.getUserId();
 
-      if (profile != null && profile['id'] != null) {
-        _currentMemberId = profile['id'];
+      // If user ID not found, try from profile
+      if (userId == null) {
+        final profile = await _apiService.getUserProfile();
+        if (profile != null && profile['id'] != null) {
+          userId = profile['id'];
+        }
+      }
+
+      if (userId != null) {
+        _currentMemberId = userId;
       } else {
-        _currentMemberId = 1; // Fallback
+        // Show login error instead of fallback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Sesi login tidak valid. Silakan logout dan login kembali.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        _currentMemberId = null;
+        setState(() => _isLoading = false);
+        return;
       }
 
       // Get member borrowing statistics
@@ -61,15 +81,31 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
       // Filter borrowings for current member
       final memberBorrowings = allBorrowings.where((borrowing) {
+        // Check id_member field directly (this is the main field in API response)
+        if (borrowing['id_member'] != null) {
+          return borrowing['id_member'] == _currentMemberId;
+        }
+        // Fallback: check nested member.id
         final member = borrowing['member'];
         if (member != null && member['id'] != null) {
           return member['id'] == _currentMemberId;
         }
+        // Fallback: check member_id field
         if (borrowing['member_id'] != null) {
           return borrowing['member_id'] == _currentMemberId;
         }
         return false;
       }).toList();
+
+      print(
+          'DEBUG: Found ${memberBorrowings.length} borrowings for member $_currentMemberId');
+
+      // Debug: Print first few borrowings to understand structure
+      for (int i = 0; i < memberBorrowings.length && i < 3; i++) {
+        final borrowing = memberBorrowings[i];
+        print(
+            'DEBUG Borrowing ${i + 1}: ID=${borrowing['id']}, Status=${borrowing['status']}, ReturnDate=${borrowing['tanggal_pengembalian_aktual']}, DueDate=${borrowing['tanggal_pengembalian']}');
+      }
 
       int totalBorrowed = memberBorrowings.length;
       int currentlyBorrowed = 0;
@@ -79,14 +115,28 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       final now = DateTime.now();
 
       for (var borrowing in memberBorrowings) {
+        // Check status field first (API uses status: "1" for borrowed, "2" for returned)
+        final status = borrowing['status'];
         final returnedDate = borrowing['tanggal_pengembalian_aktual'];
 
-        if (returnedDate != null) {
+        // A book is considered returned if:
+        // 1. It has an actual return date, OR
+        // 2. Status is "2" (returned), OR
+        // 3. Status is "3" (also returned), OR
+        // 4. Status is not "1" (not currently borrowed)
+        bool isReturned = returnedDate != null ||
+            status == "2" ||
+            status == 2 ||
+            status == "3" ||
+            status == 3 ||
+            (status != "1" && status != 1);
+
+        if (isReturned) {
           returned++;
         } else {
           currentlyBorrowed++;
 
-          // Check if overdue
+          // Check if overdue (only for currently borrowed books)
           try {
             final dueDate = DateTime.parse(borrowing['tanggal_pengembalian']);
             if (now.isAfter(dueDate)) {
@@ -97,6 +147,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
           }
         }
       }
+
+      print(
+          'DEBUG Final Stats: Total=$totalBorrowed, Currently=$currentlyBorrowed, Returned=$returned, Overdue=$overdue');
 
       setState(() {
         _stats = {

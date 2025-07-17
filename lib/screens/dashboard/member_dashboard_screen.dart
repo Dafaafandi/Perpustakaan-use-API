@@ -301,53 +301,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Statistics
-                  const Text(
-                    'Statistik Saya',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 1.3,
-                    children: [
-                      _buildStatCard(
-                        'Buku Dipinjam',
-                        '${_memberStats['borrowedBooks'] ?? 0}',
-                        Icons.library_books,
-                        Colors.blue,
-                      ),
-                      _buildStatCard(
-                        'Buku Terlambat',
-                        '${_memberStats['overdueBooks'] ?? 0}',
-                        Icons.warning,
-                        Colors.red,
-                      ),
-                      _buildStatCard(
-                        'Riwayat Pinjam',
-                        '${_memberStats['historyCount'] ?? 0}',
-                        Icons.history,
-                        Colors.green,
-                      ),
-                      _buildStatCard(
-                        'Buku Tersedia',
-                        '${_memberStats['availableBooks'] ?? 0}',
-                        Icons.book,
-                        Colors.orange,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
                   // Quick Actions
                   const Text(
                     'Aksi Cepat',
@@ -415,39 +368,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                   ),
 
                   const SizedBox(height: 32),
-
-                  // Recent Activity
-                  Card(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Aktivitas Terbaru',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.timeline,
-                                    size: 48, color: Colors.grey),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Belum ada aktivitas',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

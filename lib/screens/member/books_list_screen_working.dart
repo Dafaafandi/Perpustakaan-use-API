@@ -529,13 +529,33 @@ class _MemberBooksListScreenState extends State<MemberBooksListScreen> {
   }
 
   Future<void> _borrowBook(Book book) async {
+    // Debug authentication status
+    final authStatus = await _apiService.getAuthStatus();
+    print('Authentication Status: $authStatus');
+
     // Get current user ID
-    final userId = await _apiService.getUserId();
+    int? userId = await _apiService.getUserId();
+
+    // If user ID is null, try to get from user profile
+    if (userId == null) {
+      try {
+        final profile = await _apiService.getUserProfile();
+        if (profile != null && profile['id'] != null) {
+          userId = profile['id'];
+          // Save the user ID for future use
+          await _apiService.saveUserId(userId!);
+          print('Retrieved user ID from profile: $userId');
+        }
+      } catch (e) {
+        print('Error getting user profile: $e');
+      }
+    }
 
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda harus login terlebih dahulu'),
+          content: Text(
+              'Anda harus login terlebih dahulu. Silakan logout dan login kembali.'),
           backgroundColor: Colors.red,
         ),
       );

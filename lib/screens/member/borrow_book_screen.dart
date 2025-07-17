@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/library_api_service.dart';
 import '../../models/book.dart';
 
 class BorrowBookScreen extends StatefulWidget {
@@ -12,7 +12,7 @@ class BorrowBookScreen extends StatefulWidget {
 }
 
 class _BorrowBookScreenState extends State<BorrowBookScreen> {
-  final ApiService _apiService = ApiService();
+  final LibraryApiService _apiService = LibraryApiService();
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _borrowDateController = TextEditingController();
@@ -45,16 +45,25 @@ class _BorrowBookScreenState extends State<BorrowBookScreen> {
           _currentMemberId = profile['id'];
         });
       } else {
-        // Fallback: use a default member ID for demo
-        setState(() {
-          _currentMemberId = 1;
-        });
+        // Fallback: try to get user ID directly
+        final userId = await _apiService.getUserId();
+        if (userId != null) {
+          setState(() {
+            _currentMemberId = userId;
+          });
+        } else {
+          throw Exception('User ID tidak ditemukan');
+        }
       }
     } catch (e) {
-      // Fallback: use a default member ID for demo
-      setState(() {
-        _currentMemberId = 1;
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -118,7 +127,7 @@ class _BorrowBookScreenState extends State<BorrowBookScreen> {
       final String borrowDate = _formatDate(_selectedBorrowDate!);
       final String returnDate = _formatDate(_selectedReturnDate!);
 
-      final success = await _apiService.borrowBook(
+      final success = await _apiService.createBorrowing(
         widget.book.id,
         _currentMemberId!,
         borrowDate,

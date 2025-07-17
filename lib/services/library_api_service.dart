@@ -61,6 +61,7 @@ class LibraryApiService {
   Future<void> _clearAuthData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+    await prefs.remove('user_id');
     await prefs.remove('user_name');
     await prefs.remove('user_role');
     await prefs.remove('user_email');
@@ -94,6 +95,7 @@ class LibraryApiService {
 
             // Save user info if available
             if (data['user'] != null) {
+              await prefs.setInt('user_id', data['user']['id'] ?? 0);
               await prefs.setString(
                   'user_name', data['user']['name'] ?? 'User');
               await prefs.setString('user_email', data['user']['email'] ?? '');
@@ -499,8 +501,14 @@ class LibraryApiService {
   Future<bool> returnBook(int borrowingId, String returnDate) async {
     try {
       final formData = FormData.fromMap({
-        'tanggal_pengembalian': returnDate,
+        'tanggal_kembali': returnDate,
       });
+
+      if (kDebugMode) {
+        print('Returning book with ID: $borrowingId');
+        print('Return date being sent: $returnDate');
+        print('Field name used: tanggal_kembali');
+      }
 
       final response = await _dio.post(
         '/peminjaman/book/$borrowingId/return',
@@ -510,10 +518,17 @@ class LibraryApiService {
         ),
       );
 
+      if (kDebugMode) {
+        print('Return book response status: ${response.statusCode}');
+        print('Return book response data: ${response.data}');
+      }
+
       return response.statusCode == 200;
     } on DioException catch (e) {
       if (kDebugMode) {
         print('Error returning book: ${e.response?.data}');
+        print('Error status: ${e.response?.statusCode}');
+        print('Error message: ${e.message}');
       }
       return false;
     }
@@ -590,6 +605,54 @@ class LibraryApiService {
         print('Error importing from Excel: ${e.response?.data}');
       }
       return false;
+    }
+  }
+
+  // User profile methods
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+      final userName = prefs.getString('user_name');
+      final userEmail = prefs.getString('user_email');
+
+      if (userId != null) {
+        return {
+          'id': userId,
+          'name': userName,
+          'email': userEmail,
+        };
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting user profile: $e');
+      }
+      return null;
+    }
+  }
+
+  Future<String?> getUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('user_name');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting user name: $e');
+      }
+      return null;
+    }
+  }
+
+  Future<int?> getUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('user_id');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting user ID: $e');
+      }
+      return null;
     }
   }
 }

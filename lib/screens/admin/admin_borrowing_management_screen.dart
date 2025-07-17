@@ -20,7 +20,7 @@ class _AdminBorrowingManagementScreenState
 
   // Pagination variables
   int _currentPage = 1;
-  int _itemsPerPage = 10;
+  int _itemsPerPage = 20;
   int _totalPages = 1;
 
   @override
@@ -36,6 +36,7 @@ class _AdminBorrowingManagementScreenState
     try {
       // Get all borrowings from API
       final borrowings = await _apiService.getBorrowings();
+      //final borrowings = await _apiService.fetchAllBorrowingPages();
       setState(() {
         _allBorrowings = borrowings;
         _applyFilterAndPagination();

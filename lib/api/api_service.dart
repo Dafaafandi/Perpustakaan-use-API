@@ -103,12 +103,24 @@ class ApiService {
 
   Future<int?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('user_id');
+    final userId = prefs.getInt('user_id');
+    if (kDebugMode) {
+      print('Getting user ID: $userId');
+    }
+    return userId;
   }
 
   Future<void> _saveUserId(int id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('user_id', id);
+    if (kDebugMode) {
+      print('Saved user ID: $id');
+    }
+  }
+
+  // Public method to save user ID (for external use)
+  Future<void> saveUserId(int id) async {
+    await _saveUserId(id);
   }
 
   Future<void> logout() async {
@@ -127,6 +139,7 @@ class ApiService {
       await prefs.remove('user_name');
       await prefs.remove('user_role');
       await prefs.remove('user_email');
+      await prefs.remove('user_id'); // Fix: Remove user_id on logout
     }
   }
 
@@ -175,9 +188,49 @@ class ApiService {
         } else if (data != null && data['token'] != null) {
           // Alternative token field name
           await _saveToken(data['token']);
-          await _saveUserName('User');
-          await _saveUserRole('member');
+
+          // Check for user info in alternative structure
+          if (data['user'] != null) {
+            await _saveUserName(data['user']['name'] ?? 'User');
+            if (data['user']['id'] != null) {
+              await _saveUserId(data['user']['id']);
+            }
+            if (data['user']['role'] != null) {
+              await _saveUserRole(data['user']['role']);
+            }
+            if (data['user']['email'] != null) {
+              await _saveUserEmail(data['user']['email']);
+            }
+          } else {
+            await _saveUserName('User');
+            await _saveUserRole('member');
+          }
           return true;
+        } else if (data != null &&
+            data['status'] == 200 &&
+            data['data'] != null) {
+          // Handle response with status and data structure: {"status": 200, "data": {"token": "...", "user": {...}}}
+          final responseData = data['data'];
+          if (responseData['token'] != null) {
+            await _saveToken(responseData['token']);
+
+            if (responseData['user'] != null) {
+              await _saveUserName(responseData['user']['name'] ?? 'User');
+              if (responseData['user']['id'] != null) {
+                await _saveUserId(responseData['user']['id']);
+              }
+              if (responseData['user']['role'] != null) {
+                await _saveUserRole(responseData['user']['role']);
+              }
+              if (responseData['user']['email'] != null) {
+                await _saveUserEmail(responseData['user']['email']);
+              }
+            } else {
+              await _saveUserName('User');
+              await _saveUserRole('member');
+            }
+            return true;
+          }
         }
       }
 
@@ -2135,14 +2188,211 @@ class ApiService {
     return role == null || role.toLowerCase() == 'visitor';
   }
 
+  // Debug method to check authentication status
+  Future<Map<String, dynamic>> getAuthStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    final userId = prefs.getInt('user_id');
+    final userName = prefs.getString('user_name');
+    final userRole = prefs.getString('user_role');
+    final userEmail = prefs.getString('user_email');
+
+    final status = {
+      'hasToken': token != null && token.isNotEmpty,
+      'token': token?.substring(0, 10) ??
+          'null', // Show first 10 chars for debugging
+      'userId': userId,
+      'userName': userName,
+      'userRole': userRole,
+      'userEmail': userEmail,
+      'isAuthenticated': token != null && token.isNotEmpty && userId != null,
+    };
+
+    if (kDebugMode) {
+      print('Auth Status: $status');
+    }
+
+    return status;
+  }
+
   // Get user profile
   Future<Map<String, dynamic>?> getUserProfile() async {
     try {
-      final response = await _dio.get('/profile');
-      return response.data['data'];
+      // Try multiple endpoints that are known to work
+      List<String> endpointsToTry = [
+        '/user', // Current user endpoint
+        '/user/member', // Member specific endpoint
+        '/auth/me', // Alternative auth endpoint
+        '/me', // Simple me endpoint
+      ];
+
+      final token = await getToken();
+
+      for (String endpoint in endpointsToTry) {
+        try {
+          if (kDebugMode) {
+            print('Trying user profile endpoint: $endpoint');
+          }
+
+          Map<String, dynamic> headers = {};
+          if (token != null) {
+            headers['Authorization'] = 'Bearer $token';
+          }
+
+          final response =
+              await _dio.get(endpoint, options: Options(headers: headers));
+
+          if (response.statusCode == 200) {
+            final responseData = response.data;
+
+            if (kDebugMode) {
+              print('Success with profile endpoint: $endpoint');
+              print('Profile response structure: ${responseData?.runtimeType}');
+            }
+
+            // Handle different response structures
+            if (responseData is Map<String, dynamic>) {
+              if (responseData['status'] == 200 &&
+                  responseData['data'] != null) {
+                final data = responseData['data'];
+                if (data is Map<String, dynamic> && data['id'] != null) {
+                  if (kDebugMode) {
+                    print('Found user profile with ID: ${data['id']}');
+                  }
+                  return data;
+                }
+              } else if (responseData['data'] is Map<String, dynamic>) {
+                final data = responseData['data'];
+                if (data['id'] != null) {
+                  if (kDebugMode) {
+                    print('Found user profile with ID: ${data['id']}');
+                  }
+                  return data;
+                }
+              } else if (responseData['id'] != null) {
+                // Direct user object
+                if (kDebugMode) {
+                  print(
+                      'Found direct user profile with ID: ${responseData['id']}');
+                }
+                return responseData;
+              }
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Failed profile endpoint $endpoint: $e');
+          }
+          continue;
+        }
+      }
+
+      // If profile endpoints fail, try to extract from borrowing data
+      if (kDebugMode) {
+        print(
+            'All profile endpoints failed, trying to extract user ID from other sources');
+      }
+
+      try {
+        // Get current user name to match with borrowing data
+        final userName = await getUserName();
+        if (userName != null && userName.isNotEmpty) {
+          final borrowings = await getAllBorrowings();
+          for (var borrowing in borrowings) {
+            if (borrowing['member'] != null &&
+                borrowing['member']['name'] == userName) {
+              final memberData = borrowing['member'];
+              if (memberData['id'] != null) {
+                if (kDebugMode) {
+                  print(
+                      'Extracted user ID from borrowing data: ${memberData['id']}');
+                }
+                return memberData;
+              }
+            }
+            if (borrowing['user'] != null &&
+                borrowing['user']['name'] == userName) {
+              final userData = borrowing['user'];
+              if (userData['id'] != null) {
+                if (kDebugMode) {
+                  print(
+                      'Extracted user ID from borrowing user data: ${userData['id']}');
+                }
+                return userData;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Failed to extract user ID from borrowing data: $e');
+        }
+      }
+
+      return null;
     } catch (e) {
       if (kDebugMode) {
         print('Error getting user profile: $e');
+      }
+      return null;
+    }
+  }
+
+  // Method to manually extract and save user ID from borrowing data
+  Future<int?> extractAndSaveUserIdFromBorrowings() async {
+    try {
+      final userName = await getUserName();
+      if (userName == null || userName.isEmpty) {
+        if (kDebugMode) {
+          print('No username available to match against borrowing data');
+        }
+        return null;
+      }
+
+      if (kDebugMode) {
+        print('Attempting to extract user ID for username: $userName');
+      }
+
+      final borrowings = await getAllBorrowings();
+
+      for (var borrowing in borrowings) {
+        // Check member field
+        if (borrowing['member'] != null) {
+          final memberData = borrowing['member'];
+          if (memberData['name'] == userName && memberData['id'] != null) {
+            final userId = memberData['id'] as int;
+            await saveUserId(userId);
+            if (kDebugMode) {
+              print(
+                  'Successfully extracted and saved user ID from member data: $userId');
+            }
+            return userId;
+          }
+        }
+
+        // Check user field
+        if (borrowing['user'] != null) {
+          final userData = borrowing['user'];
+          if (userData['name'] == userName && userData['id'] != null) {
+            final userId = userData['id'] as int;
+            await saveUserId(userId);
+            if (kDebugMode) {
+              print(
+                  'Successfully extracted and saved user ID from user data: $userId');
+            }
+            return userId;
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print(
+            'Could not find matching user in borrowing data for username: $userName');
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error extracting user ID from borrowing data: $e');
       }
       return null;
     }

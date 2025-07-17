@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../api/api_service.dart';
+import '../../services/library_api_service.dart';
 
 class BorrowedBooksScreen extends StatefulWidget {
   BorrowedBooksScreen({Key? key}) : super(key: key);
@@ -9,7 +10,7 @@ class BorrowedBooksScreen extends StatefulWidget {
 }
 
 class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
-  final ApiService _apiService = ApiService();
+  final LibraryApiService _apiService = LibraryApiService();
 
   List<dynamic> _borrowings = [];
   bool _isLoading = false;
@@ -24,8 +25,12 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
 
   Future<void> _loadCurrentMember() async {
     try {
-      // Get current user ID from stored login data
-      final userId = await _apiService.getUserId();
+      // Get current user ID from LibraryApiService
+      int? userId = await _apiService.getUserId();
+      if (kDebugMode) {
+        print('Current User ID from SharedPreferences: $userId');
+      }
+
       if (userId != null) {
         setState(() {
           _currentMemberId = userId;
@@ -35,16 +40,20 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
         // Try to get from user profile
         final profile = await _apiService.getUserProfile();
         if (profile != null && profile['id'] != null) {
+          userId = profile['id'];
           setState(() {
-            _currentMemberId = profile['id'];
+            _currentMemberId = userId;
           });
           _loadBorrowings();
         } else {
-          // Show error - user not logged in
+          if (kDebugMode) {
+            print('Could not determine current user ID');
+          }
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Anda harus login terlebih dahulu'),
+                content: Text(
+                    'Tidak dapat mengidentifikasi user. Silakan login ulang.'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -52,10 +61,13 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
         }
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('Error loading current member: $e');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memuat data user: $e'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -71,26 +83,56 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
     try {
       final allBorrowings = await _apiService.getAllBorrowings();
 
+      if (kDebugMode) {
+        print('All borrowings count: ${allBorrowings.length}');
+        print('Current member ID: $_currentMemberId');
+        print(
+            'Sample borrowing structure: ${allBorrowings.isNotEmpty ? allBorrowings.first : 'No data'}');
+      }
+
       // Filter borrowings for current member only
       final memberBorrowings = allBorrowings.where((borrowing) {
         // Check if borrowing belongs to current member
         final member = borrowing['member'];
         if (member != null && member['id'] != null) {
-          return member['id'] == _currentMemberId;
+          final memberId = member['id'];
+          if (kDebugMode && allBorrowings.indexOf(borrowing) < 3) {
+            print(
+                'Checking borrowing ${borrowing['id']}: member.id = $memberId vs current = $_currentMemberId');
+          }
+          return memberId == _currentMemberId;
         }
         // Check id_member field directly
         if (borrowing['id_member'] != null) {
-          return borrowing['id_member'] == _currentMemberId;
+          final idMember = borrowing['id_member'];
+          if (kDebugMode && allBorrowings.indexOf(borrowing) < 3) {
+            print(
+                'Checking borrowing ${borrowing['id']}: id_member = $idMember vs current = $_currentMemberId');
+          }
+          return idMember == _currentMemberId;
         }
         // Fallback: check member_id field
         if (borrowing['member_id'] != null) {
-          return borrowing['member_id'] == _currentMemberId;
+          final memberId = borrowing['member_id'];
+          if (kDebugMode && allBorrowings.indexOf(borrowing) < 3) {
+            print(
+                'Checking borrowing ${borrowing['id']}: member_id = $memberId vs current = $_currentMemberId');
+          }
+          return memberId == _currentMemberId;
         }
         return false;
       }).toList();
 
+      if (kDebugMode) {
+        print(
+            'Filtered borrowings for member $_currentMemberId: ${memberBorrowings.length}');
+      }
+
       setState(() => _borrowings = memberBorrowings);
     } catch (e) {
+      if (kDebugMode) {
+        print('Error loading borrowings: $e');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memuat data peminjaman: $e')),
@@ -109,17 +151,23 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
     }
 
     return _borrowings.where((borrowing) {
-      final tanggalKembali = borrowing['tanggal_pengembalian_aktual'];
+      final status = borrowing['status'];
+      final tanggalKembali = borrowing['actual_return_date'];
       final tanggalJatuhTempo = borrowing['tanggal_pengembalian'];
       final now = DateTime.now();
 
+      // Check if book is returned (status "2" or "3", or has actual return date)
+      bool isReturned =
+          (status == "2" || status == 2 || status == "3" || status == 3) ||
+              (tanggalKembali != null);
+
       switch (_filterStatus) {
         case 'dipinjam':
-          return tanggalKembali == null;
+          return !isReturned && (status == "1" || status == 1);
         case 'dikembalikan':
-          return tanggalKembali != null;
+          return isReturned;
         case 'terlambat':
-          if (tanggalKembali != null) return false;
+          if (isReturned) return false;
           try {
             final jatuhTempo = DateTime.parse(tanggalJatuhTempo);
             return now.isAfter(jatuhTempo);
@@ -133,13 +181,38 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
   }
 
   String _getStatusText(dynamic borrowing) {
-    final tanggalKembali = borrowing['tanggal_pengembalian_aktual'];
+    // Check API status field first
+    final status = borrowing['status'];
+    final tanggalKembali = borrowing['actual_return_date'];
     final tanggalJatuhTempo = borrowing['tanggal_pengembalian'];
 
+    // If status is "2" or "3", book is returned
+    if (status == "2" || status == 2 || status == "3" || status == 3) {
+      return 'Dikembalikan';
+    }
+
+    // If there's an actual return date, book is returned
     if (tanggalKembali != null) {
       return 'Dikembalikan';
     }
 
+    // For status "1" (currently borrowed), check if overdue
+    if (status == "1" || status == 1) {
+      try {
+        final jatuhTempo = DateTime.parse(tanggalJatuhTempo);
+        final now = DateTime.now();
+
+        if (now.isAfter(jatuhTempo)) {
+          return 'Terlambat';
+        } else {
+          return 'Dipinjam';
+        }
+      } catch (e) {
+        return 'Dipinjam';
+      }
+    }
+
+    // Fallback: check due date if no clear status
     try {
       final jatuhTempo = DateTime.parse(tanggalJatuhTempo);
       final now = DateTime.now();
@@ -290,8 +363,8 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
           children: [
             Text('ID: ${borrowing['id']}'),
             const SizedBox(height: 8),
-            Text('Buku: ${borrowing['buku']?['judul'] ?? 'Unknown'}'),
-            Text('Pengarang: ${borrowing['buku']?['pengarang'] ?? 'Unknown'}'),
+            Text('Buku: ${borrowing['book']?['judul'] ?? 'Unknown'}'),
+            Text('Pengarang: ${borrowing['book']?['pengarang'] ?? 'Unknown'}'),
             const SizedBox(height: 8),
             Text('Member: ${borrowing['member']?['name'] ?? 'Unknown'}'),
             const SizedBox(height: 8),
@@ -300,7 +373,7 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
             Text(
                 'Tanggal Jatuh Tempo: ${_formatDate(borrowing['tanggal_pengembalian'])}'),
             Text(
-                'Tanggal Kembali: ${_formatDate(borrowing['tanggal_pengembalian_aktual'])}'),
+                'Tanggal Kembali: ${_formatDate(borrowing['actual_return_date'])}'),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -425,7 +498,7 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
                                   ),
                                 ),
                                 title: Text(
-                                  borrowing['buku']?['judul'] ?? 'Unknown Book',
+                                  borrowing['book']?['judul'] ?? 'Unknown Book',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold),
                                   maxLines: 2,
@@ -438,11 +511,9 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
                                         'Pinjam: ${_formatDate(borrowing['tanggal_peminjaman'])}'),
                                     Text(
                                         'Jatuh tempo: ${_formatDate(borrowing['tanggal_pengembalian'])}'),
-                                    if (borrowing[
-                                            'tanggal_pengembalian_aktual'] !=
-                                        null)
+                                    if (borrowing['actual_return_date'] != null)
                                       Text(
-                                          'Dikembalikan: ${_formatDate(borrowing['tanggal_pengembalian_aktual'])}'),
+                                          'Dikembalikan: ${_formatDate(borrowing['actual_return_date'])}'),
                                   ],
                                 ),
                                 trailing: Row(
@@ -489,8 +560,7 @@ class _BorrowedBooksScreenState extends State<BorrowedBooksScreen> {
                                             ],
                                           ),
                                         ),
-                                        if (borrowing[
-                                                'tanggal_pengembalian_aktual'] ==
+                                        if (borrowing['actual_return_date'] ==
                                             null)
                                           const PopupMenuItem(
                                             value: 'return',
