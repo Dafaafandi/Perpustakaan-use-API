@@ -498,37 +498,29 @@ class LibraryApiService {
     }
   }
 
-  Future<bool> returnBook(int borrowingId, String returnDate) async {
+  // Return a book - FUNGSI BARU UNTUK MENGEMBALIKAN BUKU
+  Future<bool> returnBook(int peminjamanId) async {
     try {
-      final formData = FormData.fromMap({
-        'tanggal_kembali': returnDate,
-      });
+      // Kita panggil endpoint 'accept' karena ia mengatur status ke '2' (Dikembalikan)
+      final response = await _dio.get('/peminjaman/book/$peminjamanId/accept');
 
       if (kDebugMode) {
-        print('Returning book with ID: $borrowingId');
-        print('Return date being sent: $returnDate');
-        print('Field name used: tanggal_kembali');
-      }
-
-      final response = await _dio.post(
-        '/peminjaman/book/$borrowingId/return',
-        data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
-      );
-
-      if (kDebugMode) {
+        print('Returning book with ID: $peminjamanId using accept endpoint');
         print('Return book response status: ${response.statusCode}');
         print('Return book response data: ${response.data}');
       }
 
+      // Ingat: Konsekuensinya adalah stok buku tidak kembali bertambah.
       return response.statusCode == 200;
     } on DioException catch (e) {
       if (kDebugMode) {
         print('Error returning book: ${e.response?.data}');
         print('Error status: ${e.response?.statusCode}');
-        print('Error message: ${e.message}');
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Unexpected error returning book: $e');
       }
       return false;
     }

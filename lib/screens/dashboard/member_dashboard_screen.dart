@@ -342,28 +342,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                           );
                         },
                       ),
-                      _buildQuickActionButton(
-                        'Riwayat',
-                        Icons.history,
-                        () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text('History functionality coming soon')),
-                          );
-                        },
-                      ),
-                      _buildQuickActionButton(
-                        'Favorit',
-                        Icons.favorite,
-                        () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Favorites functionality coming soon')),
-                          );
-                        },
-                      ),
                     ],
                   ),
 

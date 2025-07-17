@@ -1637,24 +1637,27 @@ class ApiService {
     }
   }
 
-  // Return a book
-  Future<bool> returnBook(int borrowingId, String returnDate) async {
+  // Return a book - FUNGSI BARU UNTUK MENGEMBALIKAN BUKU
+  Future<bool> returnBook(int peminjamanId) async {
     try {
-      final formData = FormData.fromMap({
-        'tanggal_pengembalian': returnDate,
-      });
+      // Kita panggil endpoint 'accept' karena ia mengatur status ke '2' (Dikembalikan)
+      final response = await _dio.get('/peminjaman/book/$peminjamanId/accept');
 
-      final response = await _dio.post(
-        '/peminjaman/book/$borrowingId/return',
-        data: formData,
-        options: Options(
-          contentType: 'multipart/form-data',
-        ),
-      );
+      if (kDebugMode) {
+        print('=== RETURN BOOK API RESPONSE ===');
+        print('Returning book with ID: $peminjamanId using accept endpoint');
+        print('Return book response status: ${response.statusCode}');
+        print('Return book response data type: ${response.data.runtimeType}');
+        print('Return book full response data: ${response.data}');
+        print('=================================');
+      }
+
+      // Ingat: Konsekuensinya adalah stok buku tidak kembali bertambah.
       return response.statusCode == 200;
     } on DioException catch (e) {
       if (kDebugMode) {
         print('Error returning book: ${e.response?.data}');
+        print('Error status: ${e.response?.statusCode}');
       }
       return false;
     } catch (e) {
@@ -2598,6 +2601,73 @@ class ApiService {
       }
       return [];
     }
+  }
+
+  /// Fetches ALL borrowing records by looping through all available pages.
+  Future<List<Borrowing>> fetchAllBorrowingPages() async {
+    List<Borrowing> allBorrowings = [];
+    int currentPage = 1;
+    int lastPage = 1;
+
+    if (kDebugMode) {
+      print('🚀 Starting to fetch all borrowing pages...');
+    }
+
+    do {
+      try {
+        final response = await _dio.get(
+          '/peminjaman',
+          queryParameters: {
+            'page': currentPage,
+            'per_page': 100
+          }, // Ambil 100 item per request
+        );
+
+        final responseData = response.data;
+
+        if (responseData is Map<String, dynamic> &&
+            responseData['status'] == 200 &&
+            responseData['data'] is Map<String, dynamic> &&
+            responseData['data']['peminjaman'] is Map<String, dynamic>) {
+          final borrowingsData = responseData['data']['peminjaman'];
+          final List<dynamic> borrowingList = borrowingsData['data'] ?? [];
+
+          if (borrowingList.isNotEmpty) {
+            allBorrowings.addAll(
+                borrowingList.map((json) => Borrowing.fromJson(json)).toList());
+          }
+
+          currentPage = borrowingsData['current_page'] ?? currentPage;
+          lastPage = borrowingsData['last_page'] ?? currentPage;
+
+          if (kDebugMode) {
+            print(
+                '✅ Fetched page $currentPage of $lastPage. Total records so far: ${allBorrowings.length}');
+          }
+
+          currentPage++; // Siapkan untuk halaman berikutnya
+        } else {
+          // Jika struktur data tidak sesuai, hentikan loop
+          if (kDebugMode) {
+            print(
+                '⚠️ Unexpected data structure on page $currentPage. Stopping.');
+          }
+          break;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error fetching page $currentPage: $e. Stopping loop.');
+        }
+        break; // Hentikan loop jika ada error
+      }
+    } while (currentPage <= lastPage);
+
+    if (kDebugMode) {
+      print(
+          '🎉 Finished fetching. Total all borrowings: ${allBorrowings.length}');
+    }
+
+    return allBorrowings;
   }
 
   // == MEMBER ROLE MANAGEMENT ==

@@ -35,8 +35,7 @@ class _AdminBorrowingManagementScreenState
     setState(() => _isLoading = true);
     try {
       // Get all borrowings from API
-      final borrowings = await _apiService.getBorrowings();
-      //final borrowings = await _apiService.fetchAllBorrowingPages();
+      final borrowings = await _apiService.fetchAllBorrowingPages();
       setState(() {
         _allBorrowings = borrowings;
         _applyFilterAndPagination();
@@ -69,7 +68,9 @@ class _AdminBorrowingManagementScreenState
             _allBorrowings.where((b) => b.status == 'borrowed').toList();
         break;
       case 'overdue':
-        filteredBorrowings = _allBorrowings.where((b) => b.isOverdue).toList();
+        // Dengan mapping status baru, API langsung memberikan status "overdue"
+        filteredBorrowings =
+            _allBorrowings.where((b) => b.status == 'overdue').toList();
         break;
       case 'returned':
         filteredBorrowings =
@@ -213,6 +214,19 @@ class _AdminBorrowingManagementScreenState
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _getStatusDisplayText(Borrowing borrowing) {
+    switch (borrowing.status) {
+      case 'borrowed':
+        return 'Dipinjam';
+      case 'returned':
+        return 'Dikembalikan';
+      case 'overdue':
+        return 'Terlambat';
+      default:
+        return borrowing.status.toUpperCase();
+    }
   }
 
   @override
@@ -367,9 +381,9 @@ class _AdminBorrowingManagementScreenState
                                         Text(
                                             'Pinjam: ${_formatDate(borrowing.borrowDate)}'),
                                         Text(
-                                            'Kembali: ${borrowing.actualReturnDate != null ? _formatDate(borrowing.actualReturnDate!) : 'Belum dikembalikan'}'),
+                                            'Kembali: ${borrowing.status == 'returned' ? (borrowing.actualReturnDate != null ? _formatDate(borrowing.actualReturnDate!) : 'Sudah dikembalikan') : 'Belum dikembalikan'}'),
                                         Text(
-                                          'Status: ${borrowing.status.toUpperCase()}',
+                                          'Status: ${_getStatusDisplayText(borrowing)}',
                                           style: TextStyle(
                                             color: borrowing.isOverdue
                                                 ? Colors.red

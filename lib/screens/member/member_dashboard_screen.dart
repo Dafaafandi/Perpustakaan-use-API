@@ -115,32 +115,35 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       final now = DateTime.now();
 
       for (var borrowing in memberBorrowings) {
-        // Check status field first (API uses status: "1" for borrowed, "2" for returned)
+        // Check status field first
+        // Status mapping baru: "1"=dipinjam, "2"=dikembalikan, "3"=terlambat
         final status = borrowing['status'];
         final returnedDate = borrowing['tanggal_pengembalian_aktual'];
 
         // A book is considered returned if:
         // 1. It has an actual return date, OR
-        // 2. Status is "2" (returned), OR
-        // 3. Status is "3" (also returned), OR
-        // 4. Status is not "1" (not currently borrowed)
-        bool isReturned = returnedDate != null ||
-            status == "2" ||
-            status == 2 ||
-            status == "3" ||
-            status == 3 ||
-            (status != "1" && status != 1);
+        // 2. Status is "2" (dikembalikan)
+        bool isReturned = returnedDate != null || status == "2" || status == 2;
+
+        // A book is overdue if status is "3"
+        bool isOverdue = status == "3" || status == 3;
 
         if (isReturned) {
           returned++;
+        } else if (isOverdue) {
+          // Status "3" dihitung sebagai terlambat, bukan dipinjam
+          overdue++;
         } else {
           currentlyBorrowed++;
 
-          // Check if overdue (only for currently borrowed books)
+          // Check if overdue (only for currently borrowed books with status "1")
           try {
-            final dueDate = DateTime.parse(borrowing['tanggal_pengembalian']);
-            if (now.isAfter(dueDate)) {
-              overdue++;
+            final dueDateStr = _getExpectedReturnDate(borrowing);
+            if (dueDateStr != null) {
+              final dueDate = DateTime.parse(dueDateStr);
+              if (now.isAfter(dueDate)) {
+                overdue++;
+              }
             }
           } catch (e) {
             // Invalid date format, skip overdue check
@@ -170,6 +173,18 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         };
       });
     }
+  }
+
+  String? _getExpectedReturnDate(dynamic borrowing) {
+    // Prioritas field untuk tanggal jatuh tempo:
+    // 1. expected_return_date (paling reliable)
+    // 2. due_date
+    // 3. tanggal_jatuh_tempo
+    // 4. tanggal_pengembalian (fallback, tapi bisa berubah saat pengembalian)
+    return borrowing['expected_return_date'] ??
+        borrowing['due_date'] ??
+        borrowing['tanggal_jatuh_tempo'] ??
+        borrowing['tanggal_pengembalian'];
   }
 
   @override

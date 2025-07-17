@@ -106,13 +106,13 @@ class BorrowingProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> returnBook(int borrowingId, String returnDate) async {
+  Future<bool> returnBook(int peminjamanId) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
 
     try {
-      final success = await _apiService.returnBook(borrowingId, returnDate);
+      final success = await _apiService.returnBook(peminjamanId);
 
       if (success) {
         // Update local data or refresh list

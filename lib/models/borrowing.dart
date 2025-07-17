@@ -29,6 +29,20 @@ class Borrowing {
   });
 
   factory Borrowing.fromJson(Map<String, dynamic> json) {
+    // Handle original due date preservation for returned books
+    DateTime? expectedReturnDate;
+
+    // If this is a returned book and we have preserved the original due date
+    if (json['original_due_date'] != null) {
+      expectedReturnDate = _parseDateTime(json['original_due_date']);
+    }
+
+    // Otherwise use the normal priority order
+    expectedReturnDate ??= _parseDateTime(json['expected_return_date'] ??
+        json['due_date'] ??
+        json['tanggal_jatuh_tempo'] ??
+        json['tanggal_pengembalian']);
+
     return Borrowing(
       id: _parseId(json['id']),
       bookId: _parseId(json['book_id'] ?? json['bookId']),
@@ -36,11 +50,11 @@ class Borrowing {
       borrowDate:
           _parseDateTime(json['tanggal_peminjaman'] ?? json['borrow_date']) ??
               DateTime.now(),
-      expectedReturnDate: _parseDateTime(
-              json['tanggal_pengembalian'] ?? json['expected_return_date']) ??
-          DateTime.now(),
-      actualReturnDate:
-          _parseDateTime(json['actual_return_date'] ?? json['returned_at']),
+      expectedReturnDate: expectedReturnDate ?? DateTime.now(),
+      actualReturnDate: _parseDateTime(json['actual_return_date'] ??
+          json['tanggal_kembali'] ??
+          json['returned_at'] ??
+          json['tanggal_pengembalian_aktual']),
       status: _parseStatus(json),
       book: json['book'] != null ? Book.fromJson(json['book']) : null,
       member: json['member'] != null ? User.fromJson(json['member']) : null,
@@ -90,7 +104,20 @@ class Borrowing {
   static String _parseStatus(Map<String, dynamic> json) {
     // Try different possible status field names
     if (json['status'] != null) {
-      return json['status'].toString().toLowerCase();
+      final statusValue = json['status'].toString();
+
+      // Handle numeric status codes from API
+      switch (statusValue) {
+        case '1':
+          return 'borrowed';
+        case '2':
+          return 'returned';
+        case '3':
+          return 'overdue';
+        default:
+          // Handle string status values
+          return statusValue.toLowerCase();
+      }
     }
 
     // Determine status based on return date
@@ -136,7 +163,13 @@ class Borrowing {
   }
 
   bool get isOverdue {
-    if (actualReturnDate != null) return false; // Already returned
+    // Jika status dari API sudah "overdue", langsung return true
+    if (status == 'overdue') return true;
+
+    // Jika sudah dikembalikan, tidak bisa dianggap terlambat
+    if (status == 'returned') return false;
+
+    // Untuk status "borrowed", cek apakah sudah melewati tanggal jatuh tempo
     return expectedReturnDate.isBefore(DateTime.now());
   }
 
