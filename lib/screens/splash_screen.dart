@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:perpus_app/api/api_service.dart';
 import 'package:perpus_app/screens/auth/login_screen.dart';
-import 'package:perpus_app/screens/dashboard_screen.dart';
+import 'package:perpus_app/screens/dashboard/member_dashboard_screen.dart';
+import 'package:perpus_app/screens/admin/admin_dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,10 +25,24 @@ class _SplashScreenState extends State<SplashScreen> {
     final token = await apiService.getToken();
     if (mounted) {
       if (token != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
+        // PERBAIKAN: Cek role user untuk menentukan dashboard yang tepat
+        final userRole = await apiService.getUserRole();
+        print('DEBUG: User role after restart: $userRole'); // Debug log
+
+        if (userRole == 'admin') {
+          print('DEBUG: Redirecting to AdminDashboardScreen'); // Debug log
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          );
+        } else {
+          print(
+              'DEBUG: Redirecting to MemberDashboardScreen (member)'); // Debug log
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MemberDashboardScreen()),
+          );
+        }
       } else {
+        print('DEBUG: No token found, redirecting to LoginScreen'); // Debug log
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
