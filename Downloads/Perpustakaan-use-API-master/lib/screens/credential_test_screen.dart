@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:perpus_app/providers/auth_provider.dart';
 import 'package:perpus_app/providers/book_provider.dart';
 import 'package:perpus_app/providers/category_provider.dart';
+import 'package:perpus_app/utils/error_handler.dart';
+import 'package:perpus_app/utils/retry_manager.dart';
 
 class CredentialTestScreen extends StatefulWidget {
   const CredentialTestScreen({super.key});
@@ -44,7 +46,13 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.login(username, password);
+
+      // Use retry mechanism for login
+      final success = await RetryManager.retryNetworkOperation(
+        () => authProvider.login(username, password),
+        context: 'Login Test',
+        maxRetries: 2,
+      );
 
       if (success) {
         setState(() {
@@ -57,16 +65,29 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
         });
 
         // Test API calls after successful login
-        _testApiCalls();
+        await _testApiCalls();
+
+        if (mounted) {
+          ErrorHandler.showSuccess(context, 'Login dan API test berhasil!');
+        }
       } else {
         setState(() {
           _loginResult = '❌ LOGIN FAILED for $username';
         });
+
+        if (mounted) {
+          ErrorHandler.showError(context, 'Login gagal untuk $username');
+        }
       }
     } catch (e) {
       setState(() {
         _loginResult = '❌ LOGIN ERROR for $username: $e';
       });
+
+      if (mounted) {
+        ErrorHandler.showError(
+            context, 'Login error: ${ErrorHandler.processError(e)}');
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -80,19 +101,35 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
       final categoryProvider =
           Provider.of<CategoryProvider>(context, listen: false);
 
-      // Test fetching books
-      await bookProvider.fetchBooks();
+      // Test fetching books with retry
+      await RetryManager.retryNetworkOperation(
+        () => bookProvider.fetchBooks(),
+        context: 'Fetch Books',
+        maxRetries: 2,
+      );
 
-      // Test fetching categories
-      await categoryProvider.fetchCategories();
+      // Test fetching categories with retry
+      await RetryManager.retryNetworkOperation(
+        () => categoryProvider.fetchCategories(),
+        context: 'Fetch Categories',
+        maxRetries: 2,
+      );
 
       setState(() {
-        _loginResult += '\n\n📚 API Test Results: Success';
+        _loginResult += '\n\n📚 API Test Results: Success\n'
+            '• Books count: ${bookProvider.books.length}\n'
+            '• Categories count: ${categoryProvider.categories.length}';
       });
     } catch (e) {
       setState(() {
-        _loginResult += '\n\n❌ API Test Failed: $e';
+        _loginResult +=
+            '\n\n❌ API Test Failed: ${ErrorHandler.processError(e)}';
       });
+
+      if (mounted) {
+        ErrorHandler.showError(
+            context, 'API Test gagal: ${ErrorHandler.processError(e)}');
+      }
     }
   }
 
@@ -103,12 +140,26 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
   }
 
   Future<void> _logout() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.logout();
-    setState(() {
-      _currentUser = '';
-      _loginResult = 'Logged out successfully';
-    });
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      await ErrorHandler.handleAsync(
+        context,
+        authProvider.logout(),
+        successMessage: 'Logout berhasil!',
+        errorContext: 'Logout',
+      );
+
+      setState(() {
+        _currentUser = '';
+        _loginResult = 'Logged out successfully';
+      });
+    } catch (e) {
+      if (mounted) {
+        ErrorHandler.showError(
+            context, 'Logout error: ${ErrorHandler.processError(e)}');
+      }
+    }
   }
 
   @override

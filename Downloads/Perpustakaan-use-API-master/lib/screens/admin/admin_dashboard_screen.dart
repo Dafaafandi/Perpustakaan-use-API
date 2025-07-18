@@ -5,7 +5,7 @@ import 'package:perpus_app/screens/admin/admin_book_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_category_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_member_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_borrowing_management_screen.dart';
-import 'package:perpus_app/screens/admin/import_export_dialog.dart';
+import 'package:perpus_app/screens/admin/enhanced_import_export_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -267,7 +267,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _showImportExportDialog() {
     showDialog(
       context: context,
-      builder: (context) => const ImportExportDialog(),
+      builder: (context) => const EnhancedImportExportDialog(),
     );
   }
 }

@@ -387,7 +387,7 @@ class Result<T> {
         return Result.success(mapper(data!));
       } catch (e) {
         return Result.failure(
-          AppException(e.toString(), originalError: e),
+          ConfigurationException(e.toString(), originalError: e),
         );
       }
     } else {
@@ -454,7 +454,7 @@ extension ExceptionExtensions on Exception {
     }
 
     // Default to generic app exception
-    return AppException(
+    return ConfigurationException(
       message.isNotEmpty ? message : 'Terjadi kesalahan yang tidak diketahui.',
       context: context,
       originalError: this,
