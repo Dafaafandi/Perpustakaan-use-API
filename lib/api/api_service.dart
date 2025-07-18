@@ -1640,19 +1640,19 @@ class ApiService {
   // Return a book - FUNGSI BARU UNTUK MENGEMBALIKAN BUKU
   Future<bool> returnBook(int peminjamanId) async {
     try {
-      // Kita panggil endpoint 'accept' karena ia mengatur status ke '2' (Dikembalikan)
-      final response = await _dio.get('/peminjaman/book/$peminjamanId/accept');
+      // Gunakan endpoint return yang benar untuk mengembalikan stok buku
+      final response = await _dio.post('/peminjaman/book/$peminjamanId/return');
 
       if (kDebugMode) {
         print('=== RETURN BOOK API RESPONSE ===');
-        print('Returning book with ID: $peminjamanId using accept endpoint');
+        print('Returning book with ID: $peminjamanId using return endpoint');
         print('Return book response status: ${response.statusCode}');
         print('Return book response data type: ${response.data.runtimeType}');
         print('Return book full response data: ${response.data}');
         print('=================================');
       }
 
-      // Ingat: Konsekuensinya adalah stok buku tidak kembali bertambah.
+      // Endpoint return yang benar akan mengembalikan stok buku
       return response.statusCode == 200;
     } on DioException catch (e) {
       if (kDebugMode) {
@@ -1755,7 +1755,7 @@ class ApiService {
           }
 
           // Count active borrowings - use model's converted status
-          // Model converts: "1" -> "borrowed", "2" -> "returned", "3" -> "overdue"
+          // Model converts: "1" -> "borrowed", "2" -> "returned", "3" -> "returned"
           bool isActiveBorrowing = false;
 
           if (borrowing.status == "borrowed" || borrowing.status == "overdue") {

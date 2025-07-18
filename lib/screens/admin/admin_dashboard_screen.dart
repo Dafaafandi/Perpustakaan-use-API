@@ -5,8 +5,7 @@ import 'package:perpus_app/screens/admin/admin_book_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_category_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_member_management_screen.dart';
 import 'package:perpus_app/screens/admin/admin_borrowing_management_screen.dart';
-import 'dart:html' as html;
-import 'package:file_picker/file_picker.dart';
+import 'package:perpus_app/screens/admin/import_export_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -201,25 +200,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const AdminBorrowingManagementScreen()))),
               _buildAdminMenuItem(context,
-                  icon: Icons.file_download,
-                  label: 'Export Excel',
+                  icon: Icons.import_export,
+                  label: 'Import/Export Data',
                   color: Colors.blue,
-                  onTap: _exportExcel),
+                  onTap: _showImportExportDialog),
               _buildAdminMenuItem(context,
-                  icon: Icons.picture_as_pdf,
-                  label: 'Export PDF',
-                  color: Colors.red,
-                  onTap: _exportPDF),
-              _buildAdminMenuItem(context,
-                  icon: Icons.cloud_download,
-                  label: 'Download Template',
-                  color: Colors.purple,
-                  onTap: _downloadTemplate),
-              _buildAdminMenuItem(context,
-                  icon: Icons.cloud_upload,
-                  label: 'Import Excel',
-                  color: Colors.deepOrange,
-                  onTap: _importExcel),
+                  icon: Icons.settings,
+                  label: 'Pengaturan',
+                  color: Colors.grey, onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Fitur pengaturan akan segera hadir')),
+                );
+              }),
             ],
           ),
         ],
@@ -280,238 +273,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _exportExcel() async {
+  void _showImportExportDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Menyiapkan file Excel...'),
-          ],
-        ),
-      ),
+      builder: (context) => const ImportExportDialog(),
     );
-
-    final downloadUrl = await _apiService.exportBooksToExcel();
-    Navigator.of(context).pop(); // Close loading dialog
-
-    if (downloadUrl != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('File Excel berhasil dibuat!'),
-          action: SnackBarAction(
-            label: 'Download',
-            onPressed: () {
-              _downloadFile(downloadUrl, 'buku_export.xlsx');
-            },
-          ),
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal membuat file Excel')),
-      );
-    }
-  }
-
-  // Helper method to download file in web browser
-  void _downloadFile(String url, String fileName) {
-    // Create an anchor element for download
-    final html.AnchorElement anchor = html.AnchorElement(href: url)
-      ..download = fileName
-      ..style.display = 'none';
-
-    // Add to DOM, click, and remove
-    html.document.body!.children.add(anchor);
-    anchor.click();
-    html.document.body!.children.remove(anchor);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('File $fileName mulai didownload...'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  void _exportPDF() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Menyiapkan file PDF...'),
-          ],
-        ),
-      ),
-    );
-
-    final downloadUrl = await _apiService.exportBooksToPdf();
-    Navigator.of(context).pop(); // Close loading dialog
-
-    if (downloadUrl != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('File PDF berhasil dibuat!'),
-          action: SnackBarAction(
-            label: 'Download',
-            onPressed: () {
-              _downloadFile(downloadUrl, 'buku_export.pdf');
-            },
-          ),
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal membuat file PDF')),
-      );
-    }
-  }
-
-  void _downloadTemplate() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 16),
-            Text('Menyiapkan template Excel...'),
-          ],
-        ),
-      ),
-    );
-
-    final downloadUrl = await _apiService.downloadBookTemplate();
-    Navigator.of(context).pop(); // Close loading dialog
-
-    if (downloadUrl != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Template Excel berhasil dibuat!'),
-          action: SnackBarAction(
-            label: 'Download',
-            onPressed: () {
-              _downloadFile(downloadUrl, 'template_buku_import.xlsx');
-            },
-          ),
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal membuat template Excel')),
-      );
-    }
-  }
-
-  void _importExcel() async {
-    try {
-      // Pick Excel file
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx', 'xls'],
-        allowMultiple: false,
-        withData: true,
-      );
-
-      if (result != null && result.files.single.bytes != null) {
-        final file = result.files.single;
-
-        // Show loading dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Row(
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Text('Mengimpor data dari Excel...'),
-              ],
-            ),
-          ),
-        );
-
-        // Call import API
-        final importResult = await _apiService.importBooksFromExcel(
-          file.bytes!,
-          file.name,
-        );
-
-        Navigator.of(context).pop(); // Close loading dialog
-
-        if (mounted) {
-          if (importResult['success']) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(importResult['message']),
-                backgroundColor: Colors.green,
-                action: SnackBarAction(
-                  label: 'Refresh',
-                  onPressed: () {
-                    _loadAdminData(); // Refresh data
-                  },
-                ),
-              ),
-            );
-          } else {
-            String errorMessage = importResult['message'] ?? 'Import gagal';
-
-            // Check if this is an authentication error
-            if (errorMessage.contains('Sesi telah berakhir') ||
-                errorMessage.contains('login kembali') ||
-                errorMessage.contains('Token tidak valid')) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(errorMessage),
-                  backgroundColor: Colors.orange,
-                  duration: const Duration(seconds: 5),
-                  action: SnackBarAction(
-                    label: 'Login',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
-                  ),
-                ),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(errorMessage),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 5),
-                ),
-              );
-            }
-          }
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tidak ada file yang dipilih')),
-          );
-        }
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog if still open
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 }

@@ -51,10 +51,7 @@ class Borrowing {
           _parseDateTime(json['tanggal_peminjaman'] ?? json['borrow_date']) ??
               DateTime.now(),
       expectedReturnDate: expectedReturnDate ?? DateTime.now(),
-      actualReturnDate: _parseDateTime(json['actual_return_date'] ??
-          json['tanggal_kembali'] ??
-          json['returned_at'] ??
-          json['tanggal_pengembalian_aktual']),
+      actualReturnDate: _parseActualReturnDate(json),
       status: _parseStatus(json),
       book: json['book'] != null ? Book.fromJson(json['book']) : null,
       member: json['member'] != null ? User.fromJson(json['member']) : null,
@@ -100,6 +97,47 @@ class Borrowing {
     return null;
   }
 
+  // Helper method to parse actual return date with proper priority
+  static DateTime? _parseActualReturnDate(Map<String, dynamic> json) {
+    final status = json['status']?.toString();
+
+    // For returned books (status "2" or "3"), look for actual return date
+    if (status == "2" || status == 2 || status == "3" || status == 3) {
+      // Priority order for return date fields
+      DateTime? returnDate = _parseDateTime(json['actual_return_date'] ??
+          json['tanggal_kembali'] ??
+          json['returned_at'] ??
+          json['tanggal_pengembalian_aktual'] ??
+          json['tanggal_dikembalikan'] ??
+          json['return_date'] ??
+          json['date_returned'] ??
+          json['tanggal_return'] ??
+          json['actual_date'] ??
+          json['returned_date'] ??
+          json['return_datetime']);
+
+      // If no explicit return date field found, use tanggal_pengembalian for returned books
+      if (returnDate == null) {
+        returnDate = _parseDateTime(json['tanggal_pengembalian']);
+      }
+
+      return returnDate;
+    }
+
+    // For non-returned books, only return date if explicitly found in return-specific fields
+    return _parseDateTime(json['actual_return_date'] ??
+        json['tanggal_kembali'] ??
+        json['returned_at'] ??
+        json['tanggal_pengembalian_aktual'] ??
+        json['tanggal_dikembalikan'] ??
+        json['return_date'] ??
+        json['date_returned'] ??
+        json['tanggal_return'] ??
+        json['actual_date'] ??
+        json['returned_date'] ??
+        json['return_datetime']);
+  }
+
   // Helper method to parse status
   static String _parseStatus(Map<String, dynamic> json) {
     // Try different possible status field names
@@ -113,7 +151,7 @@ class Borrowing {
         case '2':
           return 'returned';
         case '3':
-          return 'overdue';
+          return 'returned'; // API uses status 3 for returned books (not overdue)
         default:
           // Handle string status values
           return statusValue.toLowerCase();

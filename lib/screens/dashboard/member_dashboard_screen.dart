@@ -57,7 +57,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       final now = DateTime.now();
 
       for (var borrowing in borrowingsList) {
-        // Status: 1 = Active, 2 = Overdue, 3 = Returned
+        // Status: 1 = Dipinjam, 2 = Dikembalikan, 3 = Dikembalikan
         final status = borrowing['status']?.toString() ?? '';
         if (status == '1') {
           activeBorrowings++;

@@ -163,8 +163,7 @@ class _AdminBorrowingManagementScreenState
             const SizedBox(height: 8),
             Text('Tanggal Pinjam: ${_formatDate(borrowing.borrowDate)}'),
             const SizedBox(height: 8),
-            Text(
-                'Tanggal Kembali: ${borrowing.actualReturnDate != null ? _formatDate(borrowing.actualReturnDate!) : 'Belum dikembalikan'}'),
+            Text('Tanggal Kembali: ${_getReturnDateText(borrowing)}'),
             const SizedBox(height: 8),
             Text('Status: ${borrowing.status}'),
             if (borrowing.status == 'overdue')
@@ -180,50 +179,6 @@ class _AdminBorrowingManagementScreenState
             onPressed: () => Navigator.pop(context),
             child: const Text('Tutup'),
           ),
-          if (borrowing.status == 'borrowed')
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _returnBook(borrowing);
-              },
-              child: const Text('Kembalikan'),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _returnBook(Borrowing borrowing) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Kembalikan Buku'),
-        content: Text(
-            'Konfirmasi pengembalian buku "${borrowing.book?.judul ?? 'Unknown Book'}" oleh ${borrowing.member?.name ?? 'Unknown Member'}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                // Return book functionality
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Return book functionality coming soon')),
-                );
-                _loadBorrowings();
-              } catch (e) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
-              }
-            },
-            child: const Text('Kembalikan'),
-          ),
         ],
       ),
     );
@@ -231,6 +186,21 @@ class _AdminBorrowingManagementScreenState
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  String _getReturnDateText(Borrowing borrowing) {
+    // If status is returned, check for actual return date
+    if (borrowing.status == 'returned') {
+      if (borrowing.actualReturnDate != null) {
+        return _formatDate(borrowing.actualReturnDate!);
+      } else {
+        // If status is returned but no specific date, show generic returned message
+        return 'Sudah dikembalikan';
+      }
+    } else {
+      // For books not yet returned
+      return 'Belum dikembalikan';
+    }
   }
 
   String _getStatusDisplayText(Borrowing borrowing) {
@@ -424,7 +394,7 @@ class _AdminBorrowingManagementScreenState
                                         Text(
                                             'Pinjam: ${_formatDate(borrowing.borrowDate)}'),
                                         Text(
-                                            'Kembali: ${borrowing.status == 'returned' ? (borrowing.actualReturnDate != null ? _formatDate(borrowing.actualReturnDate!) : 'Sudah dikembalikan') : 'Belum dikembalikan'}'),
+                                            'Kembali: ${_getReturnDateText(borrowing)}'),
                                         Text(
                                           'Status: ${_getStatusDisplayText(borrowing)}',
                                           style: TextStyle(

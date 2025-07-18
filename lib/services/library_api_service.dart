@@ -95,7 +95,14 @@ class LibraryApiService {
 
             // Save user info if available
             if (data['user'] != null) {
-              await prefs.setInt('user_id', data['user']['id'] ?? 0);
+              final userId = data['user']['id'];
+              if (userId != null) {
+                await prefs.setInt('user_id', userId);
+                if (kDebugMode) {
+                  print('Saved user ID: $userId');
+                }
+              }
+
               await prefs.setString(
                   'user_name', data['user']['name'] ?? 'User');
               await prefs.setString('user_email', data['user']['email'] ?? '');
@@ -111,6 +118,9 @@ class LibraryApiService {
                   }
                 }
                 await prefs.setString('user_role', userRole);
+                if (kDebugMode) {
+                  print('Saved user role: $userRole');
+                }
               } else {
                 await prefs.setString('user_role', 'member');
               }
@@ -580,16 +590,16 @@ class LibraryApiService {
   // Return a book - FUNGSI BARU UNTUK MENGEMBALIKAN BUKU
   Future<bool> returnBook(int peminjamanId) async {
     try {
-      // Kita panggil endpoint 'accept' karena ia mengatur status ke '2' (Dikembalikan)
-      final response = await _dio.get('/peminjaman/book/$peminjamanId/accept');
+      // Gunakan endpoint return yang benar untuk mengembalikan stok buku
+      final response = await _dio.post('/peminjaman/book/$peminjamanId/return');
 
       if (kDebugMode) {
-        print('Returning book with ID: $peminjamanId using accept endpoint');
+        print('Returning book with ID: $peminjamanId using return endpoint');
         print('Return book response status: ${response.statusCode}');
         print('Return book response data: ${response.data}');
       }
 
-      // Ingat: Konsekuensinya adalah stok buku tidak kembali bertambah.
+      // Endpoint return yang benar akan mengembalikan stok buku
       return response.statusCode == 200;
     } on DioException catch (e) {
       if (kDebugMode) {
@@ -725,5 +735,47 @@ class LibraryApiService {
       }
       return null;
     }
+  }
+
+  // Public method to save user ID (for external use)
+  Future<void> saveUserId(int id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('user_id', id);
+      if (kDebugMode) {
+        print('Manually saved user ID: $id');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving user ID: $e');
+      }
+    }
+  }
+
+  // Debug method to check authentication status
+  Future<Map<String, dynamic>> getAuthStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    final userId = prefs.getInt('user_id');
+    final userName = prefs.getString('user_name');
+    final userRole = prefs.getString('user_role');
+    final userEmail = prefs.getString('user_email');
+
+    final status = {
+      'hasToken': token != null && token.isNotEmpty,
+      'token': token?.substring(0, 10) ??
+          'null', // Show first 10 chars for debugging
+      'userId': userId,
+      'userName': userName,
+      'userRole': userRole,
+      'userEmail': userEmail,
+      'isAuthenticated': token != null && token.isNotEmpty && userId != null,
+    };
+
+    if (kDebugMode) {
+      print('Auth Status Debug: $status');
+    }
+
+    return status;
   }
 }
