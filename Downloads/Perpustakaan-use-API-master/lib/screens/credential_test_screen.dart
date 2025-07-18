@@ -20,23 +20,6 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
   String _loginResult = '';
   String _currentUser = '';
 
-  // Test credentials based on the logs
-  final List<Map<String, String>> _testCredentials = [
-    {'username': '12345678', 'password': '12345678', 'note': 'Success in logs'},
-    {
-      'username': 'abidafaaa',
-      'password': 'password123',
-      'note': 'Success in logs (guess password)'
-    },
-    {'username': 'Admin123', 'password': '12345678', 'note': 'Failed in logs'},
-    {'username': 'admin', 'password': 'admin123', 'note': 'Failed in logs'},
-    {
-      'username': 'admin',
-      'password': 'password',
-      'note': 'Common admin password'
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -99,16 +82,12 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
 
       // Test fetching books
       await bookProvider.fetchBooks();
-      final bookCount = bookProvider.books.length;
 
       // Test fetching categories
       await categoryProvider.fetchCategories();
-      final categoryCount = categoryProvider.categories.length;
 
       setState(() {
-        _loginResult += '\n\n📚 API Test Results:\n'
-            '• Books loaded: $bookCount\n'
-            '• Categories loaded: $categoryCount';
+        _loginResult += '\n\n📚 API Test Results: Success';
       });
     } catch (e) {
       setState(() {
@@ -242,89 +221,40 @@ class _CredentialTestScreenState extends State<CredentialTestScreen> {
 
             const SizedBox(height: 16),
 
-            // Quick Test Buttons
-            const Text(
-              'Quick Test Credentials:',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: Column(
-                children: [
-                  // Test Credential Buttons
-                  Expanded(
-                    flex: 1,
-                    child: ListView.builder(
-                      itemCount: _testCredentials.length,
-                      itemBuilder: (context, index) {
-                        final cred = _testCredentials[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            title: Text(
-                                '${cred['username']} / ${cred['password']}'),
-                            subtitle: Text(cred['note']!),
-                            trailing: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                : ElevatedButton(
-                                    onPressed: () => _testLogin(
-                                        cred['username']!, cred['password']!),
-                                    child: const Text('Test'),
-                                  ),
-                          ),
-                        );
-                      },
-                    ),
+            // Results Display
+            if (_loginResult.isNotEmpty)
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-
-                  // Results Display
-                  if (_loginResult.isNotEmpty)
-                    Expanded(
-                      flex: 1,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Test Results:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: Text(
-                                  _loginResult,
-                                  style:
-                                      const TextStyle(fontFamily: 'monospace'),
-                                ),
-                              ),
-                            ),
-                          ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Test Results:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    ),
-                ],
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Text(
+                            _loginResult,
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),

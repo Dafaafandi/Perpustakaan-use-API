@@ -204,15 +204,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   label: 'Import/Export Data',
                   color: Colors.blue,
                   onTap: _showImportExportDialog),
-              _buildAdminMenuItem(context,
-                  icon: Icons.settings,
-                  label: 'Pengaturan',
-                  color: Colors.grey, onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Fitur pengaturan akan segera hadir')),
-                );
-              }),
             ],
           ),
         ],

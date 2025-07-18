@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:perpus_app/api/api_service.dart';
 import 'package:perpus_app/screens/admin/admin_dashboard_screen.dart';
 import 'package:perpus_app/screens/auth/login_screen.dart';
-import 'package:perpus_app/screens/auth/admin_registration_screen.dart';
-import 'package:perpus_app/screens/developer/developer_utils_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -60,16 +58,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         title: const Text('Admin Login'),
         backgroundColor: Colors.red.shade600,
         foregroundColor: Colors.white,
-        actions: [
-          // Debug/Developer Utils Button
-          IconButton(
-            icon: const Icon(Icons.developer_mode),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const DeveloperUtilsScreen()),
-            ),
-            tooltip: 'Developer Utils',
-          ),
-        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -118,7 +106,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             color: Colors.red.shade800,
                           ),
                         ),
-                        const Text('Masuk sebagai Administrator Mamorasoft Library',
+                        const Text(
+                            'Masuk sebagai Administrator Mamorasoft Library',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey)),
                         const SizedBox(height: 32),
@@ -195,23 +184,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                 ),
                         ),
                         const SizedBox(height: 16),
-                        // Link to Admin Registration
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text("Belum ada akun admin?"),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const AdminRegistrationScreen())),
-                              child: Text(
-                                'Buat Admin',
-                                style: TextStyle(color: Colors.red.shade600),
-                              ),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () => Navigator.of(context)
